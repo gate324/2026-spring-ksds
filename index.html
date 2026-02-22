@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이미지 생성 테스트</title>
+    <link rel="stylesheet" href="style.css">
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <div class="logo">서비스이름</div>
+        </div>
+        <div class="header-right">
+            <button class="btn-secondary" id="saveDraftBtn">임시 저장</button>
+            <button class="btn-primary" id="nextStepBtn">내보내기</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <aside class="left-sidebar">
+            <div class="user-profile-card" data-name="김복치" data-gender="남성" data-age="30대">
+                <div class="profile-avatar">
+                    <img src="profile.jpg" alt="프로필">
+                    <div class="avatar-placeholder" style="display:none;">
+                    </div>
+                </div>
+                <div class="profile-info">
+                    <h3 class="profile-name">김복치</h3>
+                    <div class="profile-meta">
+                        <span><i class="fas fa-venus-mars"></i> 남성</span>
+                        <span><i class="fas fa-birthday-cake"></i> 30대</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-panel collapsed" id="inputInfoPanel">
+                <div class="panel-toggle" data-target="inputInfoPanel">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>입력 정보</span>
+                    <i class="fas fa-chevron-down toggle-icon"></i>
+                </div>
+                <div class="panel-content">
+                    <div class="info-summary" id="inputSummary">
+                        <p class="info-placeholder">장면을 생성하면 입력한 정보가 여기에 표시됩니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-panel collapsed" id="keywordsPanel">
+                <div class="panel-toggle" data-target="keywordsPanel">
+                    <i class="fas fa-tags"></i>
+                    <span>키워드</span>
+                    <i class="fas fa-chevron-down toggle-icon"></i>
+                </div>
+                <div class="panel-content">
+                    <div class="keywords-list">
+                        <div class="keyword-section">
+                            <span class="keyword-section-label">감정</span>
+                            <div class="keyword-tags" id="emotionTags">
+                                <p class="info-placeholder">장면을 생성하면 감정 키워드가 표시됩니다.</p>
+                            </div>
+                        </div>
+                        <div class="keyword-section">
+                            <span class="keyword-section-label">분위기</span>
+                            <div class="keyword-tags" id="atmosphereTags">
+                                <p class="info-placeholder">장면을 생성하면 분위기 키워드가 표시됩니다.</p>
+                            </div>
+                        </div>
+                        <div class="keyword-section">
+                            <span class="keyword-section-label">요소</span>
+                            <div class="keyword-tags" id="elementTags">
+                                <p class="info-placeholder">장면을 생성하면 요소 키워드가 표시됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-panel collapsed" id="historyPanel">
+                <div class="panel-toggle" data-target="historyPanel">
+                    <i class="fas fa-inbox"></i>
+                    <span>보관함</span>
+                    <i class="fas fa-chevron-down toggle-icon"></i>
+                </div>
+                <div class="panel-content">
+                    <div class="history-list" id="historyList">
+                        <div class="history-empty" id="historyEmpty">
+                            아직 생성된 장면이 없습니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <section class="visual-section">
+            <div class="image-card" id="imageCard">
+                <div class="image-shell image-shell-empty">
+                    <div class="scenario-input-card">
+                        <div class="form-header">
+                            <h2>현재 주제: 키오스크 사용 경험</h2>
+                            <p>경험하신 상황을 자유롭게 적어주세요.</p>
+                        </div>
+                        
+                        <div class="form-body">
+                            <div class="demographic-inputs">
+                                <div class="demo-field">
+                                    <label>이름</label>
+                                    <input type="text" value="김복치" placeholder="이름 입력">
+                                </div>
+                                <div class="demo-field">
+                                    <label>나이</label>
+                                    <input type="text" value="30" placeholder="예: 20">
+                                </div>
+                                <div class="demo-field">
+                                    <label>성별</label>
+                                    <div class="radio-group">
+                                        <label><input type="radio" name="demo-gender" checked> 남성</label>
+                                        <label><input type="radio" name="demo-gender"> 여성</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="narrative-form">
+                                <p class="narrative-sentence">
+                                    <input type="text" id="sceneWhenInput" placeholder="언제" class="inline-blank" />에
+                                    <input type="text" id="sceneWhereInput" placeholder="어디" class="inline-blank" />에서
+                                    <input type="text" id="sceneWhoInput" placeholder="누구" class="inline-blank" />(와/과) 있었습니다.
+                                </p>
+                                <p class="narrative-sentence">
+                                    저는 <input type="text" id="sceneWhatInput" placeholder="무엇을" class="inline-blank" /> 하려고 했습니다.
+                                </p>
+                                <p class="narrative-sentence">
+                                    <span class="optional-hint">(선택)</span>그 이유는 <input type="text" id="sceneWhyInput" placeholder="왜" class="inline-blank" />이었습니다.
+                                </p>
+                                <p class="narrative-sentence">
+                                    <span class="optional-hint">(선택)</span>그 과정에서<br />
+                                    <textarea id="sceneHowInput" placeholder="어떤 일이 있었는지 자세히 적어주세요" class="inline-textarea" rows="3"></textarea>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="form-footer">
+                            <button id="sceneCommitBtn" class="btn-primary">장면 만들기</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="image-shell image-shell-visual">
+                    <div class="image-wrapper">
+                        <img id="geminiImg" alt="Generated Scene">
+                        
+                        <div class="image-overlays">
+                            <button id="expandBtn" class="overlay-btn expanding-btn" title="360° 파노라마 보기">
+                                <i class="fas fa-street-view"></i>
+                                <span class="btn-text">실제 장면 둘러보기</span>
+                            </button>
+                            <button id="remixToggleBtn" class="overlay-btn expanding-btn" title="이미지 수정하기">
+                                <i class="fas fa-magic"></i>
+                                <span class="btn-text">이미지 수정하기</span>
+                            </button>
+                        </div>
+
+                        <div class="narrative-overlay">
+                            <p id="narrativeText"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="image-loading" id="imageLoading">
+                    <div class="spinner"></div>
+                    <span>장면을 그리는 중이에요…</span>
+                </div>
+
+                <input type="file" id="imgInput" accept="image/*" hidden />
+            </div>
+
+            <section id="aiDeepQuestionSection" class="ai-question-section" style="display: none;">
+                <div class="question-container">
+                    <div class="question-header">
+                        <i class="fas fa-lightbulb"></i>
+                        <span class="question-title">AI 심층 질문</span>
+                        <span class="question-subtitle" style="font-size: 12px; color: #64748b; margin-left: 8px;">질문을 선택하여 답변을 남겨보세요.</span>
+                    </div>
+                    <div id="aiQuestionList" class="question-list">
+                        <div class="question-item loading-text"></div>
+                    </div>
+                    
+                    <div id="questionReplyArea" class="reply-area disabled">
+                        <div class="simple-input-section">
+                            <textarea id="replyInput" placeholder="이 상황에 대해 어떻게 느끼셨는지 자유롭게 답변해주세요." maxlength="500"></textarea>
+                            <button id="replySubmitBtn" class="submit-btn">
+                                <i class="fas fa-paper-plane"></i>
+                                <span>답변하기</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <aside class="right-sidebar" id="rightSidebar">
+            <div class="sidebar-header">
+                <h3>이미지 리믹스</h3>
+                <button id="closeRightSidebarBtn" class="header-icon-btn"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="sidebar-panel" id="paramsPanel">
+                <div class="panel-toggle">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>맥락 파라미터</span>
+                </div>
+                <div class="panel-content" style="max-height: 500px; padding: 8px 14px 14px;">
+                    <div class="adjuster-group">
+                        <div class="adjuster-row has-tooltip" data-tooltip="이미지의 전체적인 조명 밝기를 결정합니다.">
+                            <span>분위기</span>
+                            <input type="range" min="0" max="2" value="1" step="1" class="slider" data-scale="light">
+                            <span class="value-label">보통</span>
+                        </div>
+                        <div class="adjuster-row has-tooltip" data-tooltip="장면 속 주변 인물의 많고 적음을 결정합니다.">
+                            <span>밀도</span>
+                            <input type="range" min="0" max="2" value="1" step="1" class="slider" data-scale="people">
+                            <span class="value-label">보통</span>
+                        </div>
+                        <div class="adjuster-row has-tooltip" data-tooltip="카메라가 인물을 비추는 거리를 결정합니다.">
+                            <span>거리</span>
+                            <input type="range" min="0" max="2" value="1" step="1" class="slider" data-scale="distance">
+                            <span class="value-label">중간</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <div class="panel-toggle">
+                    <i class="fas fa-edit"></i>
+                    <span>세부 수정 요청</span>
+                </div>
+                <div class="panel-content" style="max-height: 500px; padding: 8px 14px 14px; overflow: visible;">
+                    <textarea id="remixInput" class="remix-textarea" placeholder="예: 주변에 나무를 더 추가해줘" rows="4"></textarea>
+                </div>
+            </div>
+
+            <button id="remixSubmitBtn" class="btn-primary">
+                <i class="fas fa-magic"></i> 이미지 다시 그리기
+            </button>
+        </aside>
+
+        <div id="panoramaFullscreen" class="panorama-fullscreen" style="display: none;">
+            <div class="panorama-container">
+                <button id="closeFullscreenBtn" class="close-fullscreen-btn" title="축소"><i class="fas fa-compress"></i></button>
+                
+                <div class="panorama-text-overlay" id="panoramaTextOverlay">
+                    <div class="overlay-glass">
+                        <h4 style="margin-bottom: 8px; color: #cbd5e1; font-size: 12px;">현재 상황</h4>
+                        <p id="panoramaNarrativeText"></p>
+                    </div>
+                </div>
+
+                <div id="panoramaViewer"></div>
+                <div class="panorama-loading" id="panoramaLoading">
+                    <div class="spinner"></div>
+                    <span>360° 파노라마 이미지를 생성하는 중…</span>
+                </div>
+            </div>
+        </div>
+
+        <input type="text" id="geminiInput" hidden value="" />
+        <button id="geminiBtn" style="display:none;"></button>
+        <button id="SaveImg" style="display:none;">Save</button>
+    </main>
+
+    <script type="module" src="geminiAPI.js"></script>
+</body>
+</html>
