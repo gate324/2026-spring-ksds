@@ -47,6 +47,8 @@ header {
 .logo { font-weight: 700; font-size: 20px; color: #5b6df5; }
 
 .header-right { display: flex; gap: 12px; }
+.header-right.is-hidden { display: none !important; }
+
 .header-right button {
     padding: 8px 16px;
     height: 36px;
@@ -64,12 +66,11 @@ header {
 ========================================== */
 main.container {
     display: grid;
-    /* 사이드바 영역을 0으로 두어 평소엔 중앙 폼이 최대 넓이를 차지하게 함 */
     grid-template-columns: 0px minmax(0, 1100px) 0px; 
     gap: 0;
     max-width: 1600px; 
     margin: 0 auto;
-    padding: 40px 40px 0; /* ✅ 수정됨: 0 40px -> 40px 40px 0 (전체 상단 여백 통일) */
+    padding: 40px 40px 0; 
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     justify-content: center;
 }
@@ -100,25 +101,19 @@ main.container.show-left .left-sidebar {
 
 .right-sidebar {
     grid-column: 3;
-    /* ✅ 다시 flex로 설정하여 gap 기능을 활성화 */
     display: flex;
     flex-direction: column;
-    gap: 24px; /* 요소들 사이의 넉넉한 간격 */
-    
+    gap: 24px; 
     position: sticky;
     top: 80px;
-    
-    /* ✅ 브라우저 높이에 반응하지 않고 내용만큼만 하얀 배경 생성 */
     height: fit-content; 
     max-height: none;
     overflow: visible;
-
     background: rgba(255,255,255,0.96);
     border-radius: 16px;
     border: 1px solid #e2e8f0;
-    padding: 24px; /* 내부 여백도 살짝 늘려 쾌적하게 */
+    padding: 24px; 
     box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-    
     opacity: 0;
     visibility: hidden;
     transform: scale(0.85) translateX(-20px);
@@ -132,11 +127,8 @@ main.container.show-right .right-sidebar {
     transform: scale(1) translateX(0);
 }
 
-/* 사이드바 스크롤바 감추기 */
-.left-sidebar::-webkit-scrollbar, 
-.right-sidebar::-webkit-scrollbar { width: 4px; }
-.left-sidebar::-webkit-scrollbar-thumb, 
-.right-sidebar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 2px; }
+.left-sidebar::-webkit-scrollbar, .right-sidebar::-webkit-scrollbar { width: 4px; }
+.left-sidebar::-webkit-scrollbar-thumb, .right-sidebar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 2px; }
 
 /* ==========================================
    4. 중앙 비주얼 섹션 (카드 및 이미지)
@@ -147,17 +139,12 @@ main.container.show-right .right-sidebar {
     flex-direction: column;
     align-items: center; 
     width: 100%;
-    padding-top: 0; /* ✅ 수정됨: 40px -> 0 (컨테이너로 여백을 옮겼으므로 여기선 제거) */
+    padding-top: 0; 
     padding-bottom: 80px; 
     gap: 20px;
 }
 
-.image-card {
-    width: 100%;
-    max-width: 900px;
-    flex-shrink: 0;
-}
-
+.image-card { width: 100%; max-width: 900px; flex-shrink: 0; }
 .image-shell { width: 100%; position: relative; }
 
 .image-shell-empty {
@@ -179,7 +166,6 @@ main.container.show-right .right-sidebar {
 
 .image-card.has-image .image-shell-empty { display: none; }
 .image-card.has-image .image-shell-visual { display: block; }
-
 .image-wrapper { position: relative; width: 100%; height: 100%; }
 
 #geminiImg {
@@ -190,7 +176,7 @@ main.container.show-right .right-sidebar {
 }
 
 /* ==========================================
-   5. 입력 폼 컴포넌트 (대상자 & 5W1H)
+   5. 입력 폼 컴포넌트 (대상자 & 5W1H 및 모달)
 ========================================== */
 .scenario-input-card { height: auto; display: flex; flex-direction: column; padding: 10px; }
 .form-header { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
@@ -198,14 +184,45 @@ main.container.show-right .right-sidebar {
 .form-header p { font-size: 14px; color: #6b7280; }
 .form-body { flex: 1; overflow: visible; }
 
+/* 구역 나누기 (하단 구분선) */
+.form-section { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid #e2e8f0; }
+.form-section.no-border { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+
+/* 입력 폼 컨테이너 */
 .demographic-inputs { display: flex; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px dashed #e5e7eb; }
-.demo-field { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.prep-demographics { margin-bottom: 16px; padding-bottom: 0; border-bottom: none; }
+
+.demo-field { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .demo-field label { font-size: 13px; font-weight: 600; color: #4b5563; }
-.demo-field input[type="text"] { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+
+/* Input 태그 강제 크기 조절 */
+.demo-field input[type="text"] { 
+    width: 100%; 
+    min-width: 0; 
+    padding: 10px 12px; 
+    border: 1px solid #d1d5db; 
+    border-radius: 8px; 
+    font-size: 14px; 
+    outline: none; 
+    transition: border-color 0.2s; 
+}
 .demo-field input[type="text"]:focus { border-color: #5b6df5; }
-.demo-field .radio-group { display: flex; gap: 16px; align-items: center; height: 40px; }
+
+.prep-demographics .name-field { flex: 0 0 100px; }
+.prep-demographics .age-field { flex: 0 0 100px; }
+.prep-demographics .gender-field { flex: 1; min-width: 150px; }
+.prep-notes-field { margin-bottom: 0; }
+
+.demo-field .radio-group { display: flex; gap: 16px; align-items: center; height: 42px; flex-wrap: nowrap; white-space: nowrap; }
 .demo-field .radio-group label { font-size: 14px; color: #374151; display: flex; align-items: center; gap: 6px; cursor: pointer; }
 
+/* 동적 질문 컨테이너 & 버튼 */
+.dynamic-question-container { display: flex; flex-direction: column; gap: 8px; }
+.prep-question-input { width: 100%; margin-top: 0 !important; }
+.add-question-btn { margin-top: 12px; background: #f8fafc; border: 1px dashed #cbd5e1; color: #475569; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 14px; font-weight: 600; transition: all 0.2s ease; }
+.add-question-btn:hover { background: #f1f5f9; border-color: #94a3b8; color: #334155; }
+
+/* 내러티브 폼 (5W1H) */
 .narrative-form { display: flex; flex-direction: column; gap: 20px; }
 .narrative-sentence { font-size: 16px; line-height: 1.8; color: #1f2937; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .inline-blank { display: inline-block; min-width: 100px; max-width: 200px; padding: 6px 10px; border: none; border-bottom: 2px solid #d1d5db; background: transparent; font-size: 15px; outline: none; transition: border-color 0.2s; }
@@ -217,79 +234,104 @@ main.container.show-right .right-sidebar {
 .optional-hint { font-size: 13px; color: #9ca3af; font-weight: 400; margin-right: 4px; }
 
 .form-footer { padding-top: 20px; margin-top: 20px; border-top: 1px solid #e5e7eb; text-align: right; }
-.form-footer .btn-primary { padding: 10px 24px; font-size: 15px; font-weight: 600; border-radius: 10px; }
+.form-footer .btn-primary { padding: 10px 24px; font-size: 15px; font-weight: 600; border-radius: 10px; width: 100%; }
 
 /* ==========================================
    6. 이미지 오버레이 및 확장/활성화 버튼
 ========================================== */
-.image-overlays {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    display: flex;
-    flex-direction: column; 
-    gap: 8px;
-    align-items: flex-end; 
-}
-
-.expanding-btn {
-    width: 38px;
-    height: 38px;
-    border-radius: 19px;
-    background: rgba(15,23,42,0.6);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: #fff;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start; 
-    padding: 0 11px;
-    white-space: nowrap;
-    backdrop-filter: blur(4px);
-}
-
+.image-overlays { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.expanding-btn { width: 38px; height: 38px; border-radius: 19px; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.3); color: #fff; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; display: flex; align-items: center; justify-content: flex-start; padding: 0 11px; white-space: nowrap; backdrop-filter: blur(4px); }
 .expanding-btn:hover { width: 140px; background: rgba(15,23,42,0.8); }
 .expanding-btn .btn-text { opacity: 0; transition: opacity 0.2s ease; margin-left: 10px; font-size: 12px; font-weight: 600; }
 .expanding-btn:hover .btn-text { opacity: 1; transition-delay: 0.1s; }
-
-.expanding-btn.active {
-    background: #5b6df5;
-    border-color: #5b6df5;
-    width: 140px;
-    box-shadow: 0 4px 12px rgba(91, 109, 245, 0.4);
-}
+.expanding-btn.active { background: #5b6df5; border-color: #5b6df5; width: 140px; box-shadow: 0 4px 12px rgba(91, 109, 245, 0.4); }
 .expanding-btn.active .btn-text { opacity: 1; }
 
-.narrative-overlay {
-    position: absolute; bottom: 24px; left: 24px; right: 24px;
-    color: rgba(248,250,252,0.96); text-shadow: 0 2px 4px rgba(0,0,0,0.5); font-size: 13px; line-height: 1.6;
-    background: rgba(15,23,42,0.7); backdrop-filter: blur(8px); padding: 18px 20px; border-radius: 18px;
-}
+.narrative-overlay { position: absolute; bottom: 24px; left: 24px; right: 24px; color: rgba(248,250,252,0.96); text-shadow: 0 2px 4px rgba(0,0,0,0.5); font-size: 13px; line-height: 1.6; background: rgba(15,23,42,0.7); backdrop-filter: blur(8px); padding: 18px 20px; border-radius: 18px; }
 
 /* ==========================================
-   7. AI 심층 질문 & 답변 영역
+   7. 통합 질문 및 답변 영역 (사전 준비 & AI 질문 병합)
 ========================================== */
-.ai-question-section { width: 100%; max-width: 900px; animation: fadeInSlideUp 0.6s ease-out forwards; }
-.question-container { width: 100%; background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(91, 109, 245, 0.2); border-radius: 20px; padding: 24px; box-shadow: 0 8px 32px rgba(91, 109, 245, 0.05); }
-.question-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-.question-header i { color: #5b6df5; font-size: 18px; }
-.question-title { font-size: 16px; font-weight: 700; color: #1e293b; }
+.unified-question-section {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 24px;
+    border-radius: 20px;
+    border: 1px solid rgba(91, 109, 245, 0.2);
+    box-shadow: 0 8px 32px rgba(91, 109, 245, 0.05);
+    margin-bottom: 20px;
+}
 
+.question-group { display: flex; flex-direction: column; gap: 12px; }
+.group-header { font-size: 14px; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 12px; }
+.group-header i { color: #5b6df5; font-size: 16px; }
+
+/* 가로 스크롤 리스트 (사전 준비 질문 등) */
+.horizontal-scroll-list {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 4px 4px 12px 4px;
+    -webkit-overflow-scrolling: touch;
+}
+.horizontal-scroll-list::-webkit-scrollbar { height: 6px; }
+.horizontal-scroll-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.horizontal-scroll-list .question-item {
+    flex: 0 0 280px; 
+    white-space: normal;
+    margin-bottom: 0 !important;
+}
+
+/* 그리드 질문 리스트 (AI 심층 질문) */
 .question-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; }
+
+/* 공통 질문 아이템 스타일 */
 .question-item { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; font-size: 14px; color: #475569; line-height: 1.5; cursor: pointer; transition: all 0.2s ease; position: relative; overflow: hidden; }
 .question-item:hover { border-color: #5b6df5; background: #ffffff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(91, 109, 245, 0.1); }
 .question-item.selected { border-color: #5b6df5; background: #f8f9ff;}
 .question-item::before { content: 'Q.'; position: absolute; right: 5px; bottom: -5px; font-size: 40px; font-weight: 900; color: rgba(91, 109, 245, 0.05); user-select: none; }
 
-/* ✅ 답변 영역 상단 점선 제거 및 여백 축소 */
-.reply-area { margin-top: 16px; padding-top: 8px; border-top: none; transition: all 0.3s ease; }
+/* 답변 영역 & 상태 처리 */
+.reply-area { margin-top: 8px; transition: all 0.3s ease; }
 .reply-area.disabled { opacity: 0.4; pointer-events: none; filter: grayscale(100%); }
-.simple-input-section { display: flex; gap: 12px; align-items: center; width: 100%; }
-.simple-input-section textarea { flex: 1; border: 1px solid #d1d5db; border-radius: 10px; padding: 12px 14px; font-size: 14px; outline: none; resize: none; height: 44px; }
-.simple-input-section textarea:focus { border-color: #5b6df5; }
-.submit-btn { display: flex; align-items: center; gap: 8px; padding: 0 20px; height: 44px; background: #5b6df5; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+
+/* 💡 세로 중앙 정렬된 답변 입력 래퍼 */
+.reply-wrapper {
+    display: flex;
+    align-items: center; 
+    gap: 12px;
+    background: #f8fafc;
+    padding: 8px 16px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    min-height: 60px;
+}
+
+.reply-wrapper textarea {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 0; 
+    resize: none;
+    height: 40px; 
+    line-height: 20px;
+    outline: none;
+    display: flex;
+    align-items: center;
+}
+
+.reply-wrapper textarea::placeholder {
+    line-height: 20px;
+    vertical-align: middle;
+}
+
+.submit-btn { display: flex; align-items: center; gap: 8px; padding: 0 20px; height: 44px; background: #5b6df5; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background-color 0.2s; }
+.submit-btn:hover { background: #4859e0; }
 
 /* ==========================================
    8. 좌측 패널 (프로필, 키워드, 보관함)
@@ -302,20 +344,12 @@ main.container.show-right .right-sidebar {
 .profile-meta { display: flex; gap: 10px; font-size: 12px; color: #6b7280; }
 .profile-meta span { display: flex; align-items: center; gap: 4px; }
 
-.sidebar-panel {
-    background: rgba(255,255,255,0.96); border-radius: 14px; border: 1px solid #e2e8f0; overflow: visible !important;}
+.sidebar-panel { background: rgba(255,255,255,0.96); border-radius: 14px; border: 1px solid #e2e8f0; overflow: visible !important;}
 .panel-toggle { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; font-size: 14px; font-weight: 600; color: #374151; user-select: none; }
 .panel-toggle i:first-child { color: #5b6df5; width: 18px; }
 .toggle-icon { margin-left: auto; font-size: 12px; color: #9ca3af; transition: transform 0.3s; }
 .sidebar-panel:not(.collapsed) .toggle-icon { transform: rotate(180deg); }
-.panel-content { 
-    max-height: 0; 
-    overflow: hidden; 
-    padding: 0 14px; 
-    transition: max-height 0.3s ease, padding 0.3s ease; 
-    position: relative; /* 추가됨 */
-    z-index: 10;        /* 추가됨 */
-}
+.panel-content { max-height: 0; overflow: hidden; padding: 0 14px; transition: max-height 0.3s ease, padding 0.3s ease; position: relative; z-index: 10; }
 .sidebar-panel:not(.collapsed) .panel-content { max-height: 500px; padding: 8px 14px 14px; overflow: visible;}
 
 /* 키워드 태그 */
@@ -347,21 +381,8 @@ main.container.show-right .right-sidebar {
 .header-icon-btn { background: none; border: none; font-size: 18px; color: #9ca3af; cursor: pointer; }
 .header-icon-btn:hover { color: #ef4444; }
 
-/* ✅ 파라미터 간격 최적화 (텍스트 줄바꿈/세로 늘어짐 방지) */
-.adjuster-group { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 16px; 
-}
-.adjuster-row { 
-    display: grid; 
-    grid-template-columns: 45px 1fr 35px; /* 공간 고정으로 줄바꿈 방지 */
-    align-items: center; 
-    gap: 8px; 
-    font-size: 12px; 
-    color: #555; 
-    white-space: nowrap; /* 텍스트 줄바꿈 방지 */
-}
+.adjuster-group { display: flex; flex-direction: column; gap: 16px; }
+.adjuster-row { display: grid; grid-template-columns: 45px 1fr 35px; align-items: center; gap: 8px; font-size: 12px; color: #555; white-space: nowrap; }
 .slider { width: 100%; height: 4px; background: #e0e0e0; border-radius: 2px; appearance: none; }
 .slider::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; background: #fff; border: 2px solid #5b6df5; border-radius: 50%; cursor: pointer; }
 .value-label { font-size: 11px; color: #5b6df5; font-weight: 600; text-align: right; }
@@ -369,66 +390,14 @@ main.container.show-right .right-sidebar {
 .remix-textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; resize: none; outline: none; }
 .remix-textarea:focus { border-color: #5b6df5; }
 
-/* ✅ 이미지 다시 그리기 버튼 스타일 새로 추가 (라운딩 및 패딩) */
-#remixSubmitBtn {
-    width: 100%;
-    padding: 14px 20px !important; /* 패널 밖이므로 조금 더 도톰하게 */
-    border-radius: 12px !important;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    background-color: #5b6df5;
-    color: #fff;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(91, 109, 245, 0.2); /* 은은한 그림자 추가 */
-}
+#remixSubmitBtn { width: 100%; padding: 14px 20px !important; border-radius: 12px !important; font-size: 14px; font-weight: 700; cursor: pointer; background-color: #5b6df5; color: #fff; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(91, 109, 245, 0.2); }
+#remixSubmitBtn:hover { background-color: #4859e0; transform: translateY(-1px); box-shadow: 0 6px 15px rgba(91, 109, 245, 0.3); }
+#remixSubmitBtn:active { transform: translateY(0); }
 
-#remixSubmitBtn:hover {
-    background-color: #4859e0;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 15px rgba(91, 109, 245, 0.3);
-}
-
-#remixSubmitBtn:active {
-    transform: translateY(0);
-}
-
-.has-tooltip { 
-    position: relative; 
-}
-.has-tooltip:hover { 
-    z-index: 1000; /* 마우스 올린 줄이 무조건 맨 위로 오게 설정 */
-}
-
-.has-tooltip::after { 
-    content: attr(data-tooltip); 
-    position: absolute; 
-    bottom: 100%; 
-    left: 50%; 
-    transform: translateX(-50%); 
-    background: rgba(15, 23, 42, 0.9); 
-    color: #fff; 
-    padding: 6px 10px; 
-    border-radius: 6px; 
-    font-size: 11px; 
-    white-space: nowrap; 
-    opacity: 0; 
-    visibility: hidden; 
-    transition: 0.2s; 
-    pointer-events: none; 
-    z-index: 10000; 
-}
-
-.has-tooltip:hover::after { 
-    opacity: 1; 
-    visibility: visible; 
-    bottom: calc(100% + 8px); /* 간격을 살짝 더 띄워서 막대와 안 겹치게 */
-}
+.has-tooltip { position: relative; }
+.has-tooltip:hover { z-index: 1000; }
+.has-tooltip::after { content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.9); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; white-space: nowrap; opacity: 0; visibility: hidden; transition: 0.2s; pointer-events: none; z-index: 10000; }
+.has-tooltip:hover::after { opacity: 1; visibility: visible; bottom: calc(100% + 8px); }
 
 /* ==========================================
    10. 로딩 애니메이션 및 파노라마 뷰어
@@ -448,42 +417,62 @@ main.container.show-right .right-sidebar {
 
 @keyframes fadeInSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ==========================================
+   11. 인터뷰 결과 목록 페이지
+========================================== */
+.interview-result-page { display: flex; flex-direction: column; height: 100vh; }
+.questioner-header { position: sticky; top: 0; z-index: 100; background-color: #ffffff; padding: 16px 20px; border-bottom: 1px solid #e0e0e0; }
+.list-content { flex: 1; overflow-y: auto; padding: 40px; } 
+
+/* ==========================================
+   12. 반응형 미디어 쿼리
+========================================== */
 @media (min-width: 1400px) {
     main.container.show-left { grid-template-columns: 300px 1fr 0px; gap: 50px; }
     main.container.show-right { grid-template-columns: 0px 1fr 300px; gap: 50px; }
     main.container.show-left.show-right { grid-template-columns: 280px 1fr 280px; gap: 30px; }
 }
 
-/* 중간 구간: 1024px ~ 1399px (태블릿 가로, 작은 노트북) */
 @media (max-width: 1399px) and (min-width: 1024px) {
     main.container.show-left { grid-template-columns: 250px 1fr 0px; gap: 30px; }
     main.container.show-right { grid-template-columns: 0px 1fr 250px; gap: 30px; }
     main.container.show-left.show-right { grid-template-columns: 220px 1fr 220px; gap: 20px; }
 }
 
-/* 좁은 구간: 1023px 이하 (태블릿 세로, 모바일) */
 @media (max-width: 1023px) {
-    main.container {
-        display: flex;
-        flex-direction: column;
-        padding: 40px 20px 0; /* ✅ 수정됨: 모바일 화면에서도 상단 여백 40px 유지 */
-    }
-    
-    .left-sidebar, .right-sidebar {
-        position: relative;
-        top: 0;
-        width: 100%;
-        max-height: none;
-        margin-bottom: 20px;
-    }
-    
+    main.container { display: flex; flex-direction: column; padding: 40px 20px 0; }
+    .left-sidebar, .right-sidebar { position: relative; top: 0; width: 100%; max-height: none; margin-bottom: 20px; }
     main.container.show-left .left-sidebar,
-    main.container.show-right .right-sidebar {
-        display: flex;
-    }
+    main.container.show-right .right-sidebar { display: flex; }
 }
 
-.visual-section {
-    width: 100%;
-    max-width: 100%; 
+/* ==========================================
+   13. 부가 오버레이 애니메이션 및 기능 (응답자 UI 팝업 전용 속성 병합)
+========================================== */
+.expandable-section:hover .section-content {
+    max-height: 400px;
+    opacity: 1;
+    margin-top: 4px;
+    margin-bottom: 12px;
+}
+
+.expandable-section.always-open .section-header {
+    color: #ffffff;
+}
+
+.expandable-section.always-open .section-content {
+    max-height: 600px;
+    opacity: 1;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    overflow-y: auto;
+}
+
+.expandable-section.always-open .section-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.expandable-section.always-open .section-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
 }

@@ -38,11 +38,6 @@ const testQuestion = '지금 보이는 이 숲의 분위기가, 기획하시던 
 // 이전에 언급하신 메타데이터(분위기, 요소, 감정 등)를 배열로 넘겨줍니다.
 const testParameters = ['#평화로운', '#울창한 숲', '#딱따구리', '#긴장감 없는', '#아침 햇살'];
 
-window.onload = () => {
-    initPanorama(testImageUrl);
-    updateInterviewUI(testNarrative, testQuestion, testParameters);
-};
-
 // ==========================================
 // UI 자동 숨김/표시 로직 (인터랙티브 오버레이)
 // ==========================================
@@ -69,3 +64,29 @@ window.addEventListener('touchstart', showUI);
 
 // 처음 화면이 로드되었을 때 UI를 한 번 보여줌
 setTimeout(showUI, 500);
+
+// 기존 코드 하단에 추가
+window.addEventListener('message', function(event) {
+    const data = event.data;
+    const loadingOverlay = document.getElementById('respondentLoading');
+
+    // 로딩 스피너 제어
+    if (data.type === 'toggleLoading') {
+        if (loadingOverlay) loadingOverlay.style.display = data.value ? 'flex' : 'none';
+    }
+
+    // [중요] 통합 데이터 수신 (장면 전환 시 한 번에 업데이트)
+    if (data.type === 'syncAll') {
+        updateInterviewUI(data.narrative, data.question, data.parameters);
+        if (data.panoramaSrc) {
+            initPanorama(data.panoramaSrc);
+        }
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+    }
+
+    // 기존 질문 동기화 유지
+    if (data.type === 'syncQuestion') {
+        const questionText = document.getElementById('panoramaQuestionText');
+        if (questionText) questionText.textContent = data.question;
+    }
+});

@@ -14,29 +14,107 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
 </head>
 <body>
-    <header>
+    <header id="mainHeader">
         <div class="header-left">
             <div class="logo">서비스이름</div>
+            <span id="headerTopicDisplay" style="margin-left: 16px; font-size: 16px; font-weight: 600; color: #4b5563;"></span>
         </div>
-        <div class="header-right">
+        <div class="header-right is-hidden" id="headerRightArea">
             <button class="btn-secondary" id="saveDraftBtn">임시 저장</button>
-            <button class="btn-primary" id="nextStepBtn">내보내기</button>
+            <button class="btn-primary" id="nextStepBtn">내보내기 / 종료</button>
         </div>
     </header>
 
-    <main class="container">
+    <section id="homeSection" class="container" style="padding: 40px 40px 0; min-height: 100vh;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2 style="font-size: 24px; font-weight: 700; color: #1e293b;">인터뷰 결과 목록</h2>
+            <button id="openPrepModalBtn" class="btn-primary" style="padding: 12px 24px; border-radius: 12px; font-size: 15px; font-weight: 600;">
+                <i class="fas fa-plus"></i> 새 인터뷰 생성
+            </button>
+        </div>
+        <div class="history-list" style="background: #fff; padding: 60px 20px; border-radius: 16px; border: 1px solid #e2e8f0; text-align: center;">
+            <i class="fas fa-folder-open" style="font-size: 48px; color: #cbd5e1; margin-bottom: 16px;"></i>
+            <p style="color: #64748b; font-size: 15px;">아직 저장된 인터뷰가 없습니다. 새 인터뷰를 생성해보세요.</p>
+        </div>
+    </section>
+
+    <div id="prepModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="scenario-input-card" style="background: #fff; border-radius: 20px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; padding: 32px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <div class="form-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+                <div>
+                    <h2 style="font-size: 20px; font-weight: 700;">새 인터뷰 준비</h2>
+                    <p style="font-size: 13px; color: #64748b; margin-top: 4px;">주제와 대상자 정보, 사전 질문을 입력하세요.</p>
+                </div>
+                <button id="closePrepModalBtn" style="background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="form-body">
+                <div class="form-section">
+                    <div class="demo-field">
+                        <label>인터뷰 주제</label>
+                        <input type="text" id="prepTopic" placeholder="예: 대형 마트 셀프 계산대 이용 경험">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="demographic-inputs prep-demographics">
+                        <div class="demo-field name-field">
+                            <label>이름</label>
+                            <input type="text" id="prepName" placeholder="예: 박영희">
+                        </div>
+                        <div class="demo-field age-field">
+                            <label>나이</label>
+                            <input type="text" id="prepAge" placeholder="예: 50">
+                        </div>
+                        <div class="demo-field gender-field">
+                            <label>성별</label>
+                            <div class="radio-group">
+                                <label><input type="radio" name="prepGender" value="남성" checked> 남성</label>
+                                <label><input type="radio" name="prepGender" value="여성"> 여성</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="demo-field prep-notes-field">
+                        <label>특이사항</label>
+                        <textarea id="prepNotes" class="inline-textarea" rows="2" placeholder="예: 무인 기기에 막연한 두려움이 있음..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section no-border">
+                    <div class="demo-field">
+                        <label>사전 준비 질문</label>
+                        <div id="dynamicQuestionContainer" class="dynamic-question-container">
+                            <input type="text" class="prep-question-input inline-textarea" placeholder="질문을 입력하세요">
+                        </div>
+                        <button id="addQuestionBtn" type="button" class="add-question-btn">
+                            <i class="fas fa-plus"></i> 질문 추가하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-footer" style="padding-top: 16px; border-top: none; text-align: center;">
+                <button id="startInterviewBtn" class="btn-primary" style="width: 100%; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 700;">
+                    인터뷰 시작하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <main id="mainSection" class="container" style="display: none;">
         <aside class="left-sidebar">
-            <div class="user-profile-card" data-name="김복치" data-gender="남성" data-age="30대">
+            <div class="user-profile-card" id="userProfileCard" data-name="김복치" data-gender="남성" data-age="30대">
                 <div class="profile-avatar">
                     <img src="profile.jpg" alt="프로필">
                     <div class="avatar-placeholder" style="display:none;">
                     </div>
                 </div>
                 <div class="profile-info">
-                    <h3 class="profile-name">김복치</h3>
+                    <h3 class="profile-name" id="profileNameDisplay">김복치</h3>
                     <div class="profile-meta">
-                        <span><i class="fas fa-venus-mars"></i> 남성</span>
-                        <span><i class="fas fa-birthday-cake"></i> 30대</span>
+                        <span><i class="fas fa-venus-mars"></i> <span id="profileGenderDisplay">남성</span></span>
+                        <span><i class="fas fa-birthday-cake"></i> <span id="profileAgeDisplay">30대</span></span>
                     </div>
                 </div>
             </div>
@@ -102,10 +180,10 @@
 
         <section class="visual-section">
             <div class="image-card" id="imageCard">
-                <div class="image-shell image-shell-empty">
+                <div class="image-shell image-shell-empty" style="display: none;">
                     <div class="scenario-input-card">
                         <div class="form-header">
-                            <h2>현재 주제: 키오스크 사용 경험</h2>
+                            <h2 id="mainTopicDisplay">현재 주제: 키오스크 사용 경험</h2>
                             <p>경험하신 상황을 자유롭게 적어주세요.</p>
                         </div>
                         
@@ -129,21 +207,13 @@
                             </div>
 
                             <div class="narrative-form">
-                                <p class="narrative-sentence">
-                                    <input type="text" id="sceneWhenInput" placeholder="언제" class="inline-blank" />에
-                                    <input type="text" id="sceneWhereInput" placeholder="어디" class="inline-blank" />에서
-                                    <input type="text" id="sceneWhoInput" placeholder="누구" class="inline-blank" />(와/과) 있었습니다.
-                                </p>
-                                <p class="narrative-sentence">
-                                    저는 <input type="text" id="sceneWhatInput" placeholder="무엇을" class="inline-blank" /> 하려고 했습니다.
-                                </p>
-                                <p class="narrative-sentence">
-                                    <span class="optional-hint">(선택)</span>그 이유는 <input type="text" id="sceneWhyInput" placeholder="왜" class="inline-blank" />이었습니다.
-                                </p>
-                                <p class="narrative-sentence">
-                                    <span class="optional-hint">(선택)</span>그 과정에서<br />
-                                    <textarea id="sceneHowInput" placeholder="어떤 일이 있었는지 자세히 적어주세요" class="inline-textarea" rows="3"></textarea>
-                                </p>
+                                <p style="margin-bottom: 8px; font-weight: 600; color: #374151;">초기 상황 묘사</p>
+                                <textarea id="sceneHowInput" placeholder="인터뷰를 시작할 첫 장면의 상황을 자유롭게 묘사해주세요." class="inline-textarea" rows="4" style="font-size: 15px; padding: 12px;"></textarea>
+                                <input type="hidden" id="sceneWhoInput" value="">
+                                <input type="hidden" id="sceneWhatInput" value="">
+                                <input type="hidden" id="sceneWhenInput" value="">
+                                <input type="hidden" id="sceneWhereInput" value="">
+                                <input type="hidden" id="sceneWhyInput" value="">
                             </div>
                         </div>
 
@@ -182,25 +252,26 @@
                 <input type="file" id="imgInput" accept="image/*" hidden />
             </div>
 
-            <section id="aiDeepQuestionSection" class="ai-question-section" style="display: none;">
-                <div class="question-container">
-                    <div class="question-header">
-                        <i class="fas fa-lightbulb"></i>
-                        <span class="question-title">AI 심층 질문</span>
-                        <span class="question-subtitle" style="font-size: 12px; color: #64748b; margin-left: 8px;">질문을 선택하여 답변을 남겨보세요.</span>
-                    </div>
-                    <div id="aiQuestionList" class="question-list">
-                        <div class="question-item loading-text"></div>
-                    </div>
-                    
-                    <div id="questionReplyArea" class="reply-area disabled">
-                        <div class="simple-input-section">
-                            <textarea id="replyInput" placeholder="이 상황에 대해 어떻게 느끼셨는지 자유롭게 답변해주세요." maxlength="500"></textarea>
-                            <button id="replySubmitBtn" class="submit-btn">
-                                <i class="fas fa-paper-plane"></i>
-                                <span>답변하기</span>
-                            </button>
+            <section class="unified-question-section">
+                <div class="question-group">
+                    <div class="group-header"><i class="fas fa-list-ul"></i> 사전 준비 질문</div>
+                    <div id="prepQuestionList" class="horizontal-scroll-list">
                         </div>
+                </div>
+                <div class="question-group">
+                    <div id="aiDeepQuestionSection" class="question-group" style="display: none;">
+                        <div class="group-header"><i class="fas fa-lightbulb"></i> AI 심층 질문</div>
+                        <div id="aiQuestionList" class="question-list">
+                            </div>
+                    </div>
+                </div>
+
+                <div id="questionReplyArea" class="reply-area disabled">
+                    <div class="reply-wrapper">
+                        <textarea id="replyInput" placeholder="질문을 선택한 후 답변을 입력해주세요."></textarea>
+                        <button id="replySubmitBtn" class="submit-btn">
+                            <i class="fas fa-paper-plane"></i> <span>답변하기</span>
+                        </button>
                     </div>
                 </div>
             </section>
