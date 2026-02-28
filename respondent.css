@@ -1,0 +1,155 @@
+/* 오버레이 UI 컨테이너 위치 잡기 */
+.panorama-text-overlay {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    z-index: 10;
+    max-width: 400px;
+}
+
+/* 반투명 유리 효과 (사진과 동일하게) */
+.overlay-glass {
+    background: rgba(15, 23, 42, 0.6); /* 어두운 남색 계열 반투명 */
+    backdrop-filter: blur(12px); /* 뒤 배경 흐리게 */
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 24px;
+    color: #ffffff;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+#panoramaNarrativeText {
+    font-size: 16px;
+    line-height: 1.6;
+    word-break: keep-all;
+}
+
+/* 유리창 내부 구분선 */
+.glass-divider {
+    border: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 16px 0;
+}
+
+/* 각 섹션 제목 스타일 */
+.overlay-glass h4 {
+    margin-bottom: 8px; 
+    color: #94a3b8; /* 약간 톤 다운된 은은한 색 */
+    font-size: 13px;
+    font-weight: 400;
+}
+
+/* 질문 텍스트 강조 */
+.section-question p {
+    font-size: 18px;
+    font-weight: 700;
+    color: #60a5fa; /* 파란색 계열로 질문 강조 */
+    word-break: keep-all;
+}
+
+/* 키워드 태그 컨테이너 */
+.tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+/* 개별 키워드 태그 스타일 */
+.param-tag {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+/* 태그에 마우스 올렸을 때 살짝 빛나는 효과 */
+.param-tag:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* ==========================================
+   펼침(Accordion) UI 스타일
+========================================== */
+
+/* 1. 기본 상태: 오버레이 투명도 100% 고정 */
+.panorama-info-overlay, 
+.panorama-question-overlay {
+    opacity: 1 !important; 
+    pointer-events: auto;
+}
+
+/* 2. 메뉴 이름 (항상 보이는 부분) */
+.section-header {
+    font-size: 14px;
+    font-weight: 700;
+    color: #94a3b8; /* 평소엔 약간 어두운 색 */
+    cursor: default;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    transition: color 0.3s ease;
+}
+
+/* 3. 펼쳐질 내용 (마우스 올리기 전엔 높이 0, 숨김) */
+.section-content {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
+}
+
+/* 4. 마우스 호버 시: 글씨 밝아지고, 내용 스르륵 펼쳐짐 */
+.expandable-section:hover .section-header {
+    color: #ffffff; /* 메뉴 이름이 하얗게 강조됨 */
+}
+
+.expandable-section:hover .section-content {
+    max-height: 200px; /* 내용이 펼쳐질 충분한 높이 */
+    opacity: 1;
+    margin-top: 4px;
+    margin-bottom: 12px;
+}
+
+/* ==========================================
+   하단 질문창 전용 특별 디자인 (캡슐 모양 -> 네모 박스)
+========================================== */
+.question-glass {
+    text-align: center;
+    padding: 12px 24px !important;
+    border-radius: 30px !important; /* 처음엔 알약 같은 캡슐 모양 */
+    transition: all 0.4s ease;
+}
+
+.question-glass .section-header {
+    justify-content: center;
+    font-size: 16px;
+    color: #cbd5e1;
+}
+
+/* 마우스 올리면 캡슐이 둥근 사각형 박스로 스르륵 변하며 커짐 */
+.panorama-question-overlay:hover .question-glass {
+    border-radius: 16px !important;
+    padding: 24px 32px !important;
+}
+
+/* ==========================================
+   항상 펼쳐져 있는 섹션 전용 스타일
+========================================== */
+.expandable-section.always-open .section-header {
+    color: #ffffff; /* 글씨 항상 밝게 */
+}
+
+.expandable-section.always-open .section-content {
+    max-height: 200px; /* 내용 항상 펼쳐짐 */
+    opacity: 1;
+    margin-top: 4px;
+    margin-bottom: 12px;
+}
