@@ -1,12 +1,8 @@
 import { GoogleGenerativeAI, SchemaType } from "https://esm.run/@google/generative-ai";
 
-// API 키 가져오기 또는 입력받기
-console.log('API 키 초기화 시작...');
 let apiKey = sessionStorage.getItem('gemini_api_key');
-console.log('저장된 API 키:', apiKey ? '존재함' : '없음');
 
 if (!apiKey) {
-    console.log('API 키 입력 요청 중...');
     apiKey = prompt('Gemini API 키를 입력해주세요');
     if (apiKey && apiKey.trim()) {
         sessionStorage.setItem('gemini_api_key', apiKey.trim());
@@ -15,12 +11,9 @@ if (!apiKey) {
     }
 }
 
-// API 초기화
 const genAI = new GoogleGenerativeAI(apiKey || "");
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-image" }); // 이미지 생성용 모델
-const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // 텍스트 생성용 모델
-
-console.log('Gemini API 초기화 완료');
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-image" });
+const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 let respondentWindow = null; // 응답자 화면 윈도우 객체
 
@@ -31,7 +24,6 @@ function syncToRespondent(panoramaSrc) {
             const tags = [...currentKeyEmotions, ...currentAtmosphere, ...currentKeyElements].map(t => `#${t}`);
             const questionToDisplay = currentSelectedQuestion || "응답을 기다리고 있습니다...";
             
-            // 💡 [수정] 직접 함수 호출 대신 postMessage를 사용하여 안정적으로 데이터 전달
             respondentWindow.postMessage({
                 type: 'syncAll',
                 narrative: currentNarrative,
@@ -39,8 +31,6 @@ function syncToRespondent(panoramaSrc) {
                 parameters: tags,
                 panoramaSrc: panoramaSrc
             }, '*');
-            
-            console.log("응답자 화면 동기화 완료");
         } catch (e) {
             console.error("응답자 탭 동기화 실패:", e);
         }
@@ -57,19 +47,9 @@ const geminiBtn = document.getElementById("geminiBtn"); // 실제 API 호출 버
 const geminiImg = document.getElementById("geminiImg"); // 생성된 이미지 표시
 const saveImgBtn = document.getElementById("SaveImg"); // 이미지 저장
 
-// 시나리오 입력 (5W1H)
-const sceneWhoInput = document.getElementById("sceneWhoInput"); // 누가
-const sceneWhatInput = document.getElementById("sceneWhatInput"); // 무엇을
-const sceneWhenInput = document.getElementById("sceneWhenInput"); // 언제
-const sceneWhereInput = document.getElementById("sceneWhereInput"); // 어디서
-const sceneWhyInput = document.getElementById("sceneWhyInput"); // 왜
-const sceneHowInput = document.getElementById("sceneHowInput"); // 어떻게
-const sceneCommitBtn = document.getElementById("sceneCommitBtn"); // 장면 만들기 버튼
-
 // UI 컨트롤
 const imageCard = document.getElementById("imageCard"); // 이미지 카드 컨테이너
 const narrativeTextEl = document.getElementById("narrativeText"); // 내러티브 텍스트 표시
-const sceneGenerateBtn = document.getElementById("sceneGenerateBtn"); // 생성하기 버튼
 const expandBtn = document.getElementById("expandBtn"); // 확대 버튼
 const panoramaFullscreen = document.getElementById("panoramaFullscreen"); // 파노라마 전체 화면
 const closeFullscreenBtn = document.getElementById("closeFullscreenBtn"); // 축소 버튼
@@ -81,15 +61,11 @@ const remixSubmitBtn = document.getElementById("remixSubmitBtn");
 const remixInput = document.getElementById("remixInput");
 
 const questionReplyArea = document.getElementById("questionReplyArea");
-const selectedQuestionLabel = document.getElementById("selectedQuestionLabel");
 const replyInput = document.getElementById("replyInput");
 const replySubmitBtn = document.getElementById("replySubmitBtn");
 const panoramaNarrativeText = document.getElementById("panoramaNarrativeText");
 
 let currentSelectedQuestion = "";
-
-// 맥락 파라미터
-const sliders = document.querySelectorAll(".slider"); // 맥락 파라미터 슬라이더
 
 // 히스토리
 const historyToggleBtn = document.getElementById("historyToggleBtn"); // 히스토리 패널 토글
@@ -98,7 +74,7 @@ const historyEmptyEl = document.getElementById("historyEmpty"); // 히스토리 
 
 // 전역 상태
 let sceneCommitted = false; // 장면이 커밋되었는지 여부
-let sceneHistory = []; // 장면 히스토리: [{id, time, imgSrc, panoramaImgSrc, narrativeHtml, narrativeText, prompt, keyEmotions, keyElements}]
+let sceneHistory = []; // 장면 히스토리: [{id, time, imgSrc, panoramaImgSrc, narrativeHtml, narrativeText, prompt, keyEmotions, keyElements, sceneNumber, variationNumber}]
 let isRestoring = false; // 히스토리에서 복원 중인지 여부
 let currentNarrative = ""; // 현재 생성된 내러티브
 let currentPrompt = ""; // 현재 생성에 사용된 프롬프트
@@ -106,6 +82,11 @@ let currentKeyEmotions = []; // 현재 주요 감정
 let currentAtmosphere = []; // 현재 분위기 키워드
 let currentKeyElements = []; // 현재 핵심 요소
 let panoramaViewer = null; // Pannellum 뷰어 인스턴스
+let currentPanoramaImgSrc = null; // 현재 파노라마 이미지 소스
+let currentSceneNumber = 1; // 현재 장면 번호
+let currentVariationNumber = 1; // 현재 장면의 변형 번호
+let currentEditMode = 'remix'; // 'remix' 또는 'create'
+let interactionLog = []; // 인터뷰 인터랙션 로그
 
 // ============================================
 // 프롬프트 스타일 정의
@@ -121,7 +102,7 @@ const PROMPT_STYLE = {
         
         return `
 스타일: 따뜻하고 부드러운 조명의 미니어쳐 3D 카툰 렌더링 스타일입니다. 클레이 애니메이션처럼 부드러운 질감과 둥글둥글한 형태를 가집니다. 전체적으로 귀엽고 친근하며, 현실적이면서도 과장되지 않은 자연스러운 분위기를 연출합니다.
-캐릭터: ${name}, ${age} ${gender} 캐릭터입니다. 갈색의 짧고 단정한 머리, 동그란 갈색 테 안경을 쓰고 있습니다. 회색의 짜임이 있는 니트 스웨터와 갈색 바지를 입고 있습니다.
+캐릭터: ${name}, ${age} ${gender} 캐릭터입니다. 일상적인 한국인의 외모를 가진 캐릭터로 표현해주세요.
         `;
     }
 };
@@ -143,11 +124,6 @@ geminiBtn?.addEventListener("click", async () => {
     geminiBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; 
     geminiBtn.disabled = true;
 
-    // API 호출
-    console.log('====== 이미지 생성 프롬프트 ======');
-    console.log(parts[0].text || '(이미지 포함)');
-    console.log('===================================');
-    
     const result = await model.generateContent({
         contents: [{ role: "user", parts: parts }],
         generationConfig: {
@@ -258,7 +234,6 @@ async function generateNarrativeWithAI() {
     const questionInputs = document.querySelectorAll('.prep-question-input');
     const questions = Array.from(questionInputs).map(input => input.value.trim()).filter(val => val !== "").join(", ");
 
-    // 내러티브 스키마 정의
     const schema = {
         description: "Narrative description of a contextual inquiry scene",
         type: SchemaType.OBJECT,
@@ -273,31 +248,62 @@ async function generateNarrativeWithAI() {
 
     const prompt = `
 # ROLE
-당신은 UX 리서치 맥락에서 인터뷰 대상자의 기본 프로필과 리서치 주제만을 바탕으로, 심층 인터뷰의 출발점이 될 '초기 상황(Baseline Scene)' 내러티브를 생생하게 구성하는 전문가입니다.
+당신은 UX 리서치 맥락에서 사용자의 과거 경험을 장면(scene) 단위 내러티브로 재구성하는 전문가입니다. 사용자의 응답을 기반으로, 한 순간의 경험을 시간적, 공간적, 감정적 맥락까지 포함한 짧지만 구체적인 이야기로 정리합니다. 사용자의 경험을 깊이 이해하고 생생한 내러티브로 표현하는 데 탁월한 능력을 가지고 있습니다.
 
 # BACKGROUND
-대상자가 해당 경험에 막 진입하는 첫 순간을 구체적인 장면으로 묘사하여, 대상자가 당시의 기억을 쉽게 떠올릴 수 있도록 돕습니다. 대상자의 성향(특이사항)을 반영하여 '가장 개연성 있는 가설적 상황'을 구성하세요.
+내러티브는 인물, 배경, 사건이 시간적 순서와 인과관계를 가지며 배열된 이야기 구조입니다. 한 장면을 효과적으로 묘사하는 내러티브는 다음 4요소를 포함할 때 이해와 몰입이 높아집니다.
+
+1) 상황 제시(orientation): 언제, 어디서, 누구와, 무엇을 하고 있었는지
+2) 사건 전개(complicating action): 그때 무슨 일이 일어났고, 사용자가 어떤 행동을 했는지
+3) 평가/감정(evaluation): 그 순간 어떤 감정을 가지고 생각을 했고, 왜 중요한지
+4) 결과/여운(result/coda): 그 일의 결과와, 지금 돌아봤을 때 남아 있는 느낌이 무엇인지
+
+UX 문맥에서는 이 4요소를 "상황(when/where/who/what) – 행동 – 감정/생각 – 결과/의미"로 정리할 수 있습니다.
+
+# TASK
+사용자가 제공한 경험 데이터(CONTEXT)를 바탕으로, 당시 상황을 생생하게 재현하는 1인칭 시점의 내러티브를 작성하세요. 단순한 설명이 아니라, 마치 그 장면을 실제로 보는 듯한 구체적이고 감각적인 묘사가 필요합니다.
 
 # CONTEXT
+## 인터뷰 주제
+${topic}
+
 ## 캐릭터 정보
 - 이름: ${name}
 - 성별: ${gender}
 - 나이대: ${age}
-- 특이사항: ${prepNotes}
+${prepNotes !== "특이사항 없음" ? `- 특이사항: ${prepNotes}` : ""}
 
-# INPUT DATA
-## 리서치 정보
-- 인터뷰 주제: ${topic}
-- 탐색 방향(사전 질문): ${questions} (이 질문들로 대화가 이어질 수 있는 초기 상황을 세팅하세요)
+${questions ? `## 사전 질문\n${questions}` : ""}
+
+# TASK
+※ 중요: 사전 질문은 단순히 사용자의 경험을 이해하기 위한 참고 자료일 뿐, 내러티브에 직접 포함되어야 하는 사건은 아닙니다. 사용자가 실제로 경험한 과거의 특정 순간에 집중하세요.
 
 # OUTPUT DIRECTIVES
-1. narrative: 5-8문장으로 구성된 자연스러운 1인칭 스토리. 대상자가 '인터뷰 주제' 상황에 처음 마주한 순간의 행동과 심리를 '특이사항'에 맞게 구체적으로 묘사.
-2. key_emotions: 주요 감정 3-5개
-3. atmosphere: 분위기 키워드 3-5개
-4. key_elements: 중요한 시각적/맥락적 요소 3-5개
+## Format Requirements
+1. narrative (string): 5-8문장으로 구성된 자연스러운 스토리
+   - 1인칭 시점(“나는 …했다”, “나는 …라고 느꼈다”)으로 작성합니다.
+   - 일기처럼 자연스럽지만, 연구자가 읽기에도 명료한 문장을 사용합니다. 과도한 수사나 비유는 지양하고, 구체적인 상황 묘사에 집중하세요.
+   - 사용자가 말하지 않은 세부(조명, 소리, 주변 사람 수 등)는 “한국의 일상적 상황에서 자연스러운 수준”에서만 보수적으로 보완합니다.
+
+2. key_emotions (array of strings): **반드시 3-5개의 구체적인 감정 키워드를 배열로 제공하세요**
+   - 예시: ["불안함", "당혹스러움", "호기심"]
+   - 사용자 입력에서 유추되는 감정만 포함
+   - 추상적이거나 모호한 표현 피하기 (예: "그저 그렇다", "복잡하다")
+
+3. atmosphere (array of strings): **반드시 3-5개의 분위기 키워드를 배열로 제공하세요**
+   - 예시: ["긴장감", "분주함", "조용함"]
+   - 사용자 입력에 기반한 분위기 키워드
+   - 장소, 시간대, 주변 환경에 의향을 받을 수 있음
+
+4. key_elements (array of strings): **반드시 3-5개의 시각적/맥락적 요소를 배열로 제공하세요**
+   - 예시: ["셀프 계산대", "대형 마트 내부", "터치 스크린"]
+   - 사용자가 언급한 구체적 요소만 포함
+   - 장면의 핵심 사물, 공간, 인터페이스 등
+
+**중요: 모든 필드는 반드시 제공되어야 하며, 빈 배열이 아닌 유효한 값들을 포함해야 합니다.**
 
 # TONE
-생생하고 공감적인 톤. 과장되지 않게 일상적이고 자연스럽게 묘사.
+생생하고 사실적이며, 공감적인 톤을 유지하세요. 사용자의 경험을 존중하고 그 순간의 감정을 진지하게 다루되, 지나치게 감상적이거나 문학적이지 않도록 자연스럽게 작성하세요.
 `;
 
     try {
@@ -326,76 +332,8 @@ async function generateNarrativeWithAI() {
     }
 }
 
-// 슬라이더 값을 레이블로 변환 (3단계: 0=낮음, 1=보통, 2=높음)
-function labelForSlider(scale, value) {
-    const v = Number(value);
-    if (scale === "light") {
-        if (v === 0) return "어두움";
-        if (v === 1) return "보통";
-        return "밝음";
-    }
-    if (scale === "people") {
-        if (v === 0) return "한적함";
-        if (v === 1) return "보통";
-        return "붐빔";
-    }
-    if (scale === "distance") {
-        if (v === 0) return "클로즈업";
-        if (v === 1) return "중간";
-        return "원경";
-    }
-    return "";
-}
-
-// 슬라이더 레이블 초기화 및 이벤트 바인딩
-function setupSliderLabels() {
-    sliders.forEach((slider) => {
-        const row = slider.closest(".adjuster-row");
-        const label = row?.querySelector(".value-label");
-        const scale = slider.dataset.scale;
-        if (!label || !scale) return;
-        const apply = () => {
-            label.textContent = labelForSlider(scale, slider.value);
-        };
-        slider.addEventListener("input", apply);
-        apply();
-    });
-}
-
-// 카메라 각도 결정 (거리 슬라이더 기반: 0=클로즈업, 1=중간, 2=원경)
-function getCameraAngle() {
-    const distanceSlider = Array.from(sliders).find(s => s.dataset.scale === "distance");
-    if (!distanceSlider) return "Medium Shot";
-    const v = Number(distanceSlider.value);
-    if (v === 0) return "Close-Up Shot";
-    if (v === 1) return "Medium Shot";
-    return "Wide Shot";
-}
-
-// 맥락 요약 생성 (슬라이더 값들을 자연어로 변환)
-function buildContextSummary() {
-    let summaryParts = [];
-    sliders.forEach((slider) => {
-        const scale = slider.dataset.scale;
-        const v = Number(slider.value);
-        if (scale === "light") {
-            if (v === 0) summaryParts.push("조명이 어둡고 차분한 분위기");
-            else if (v === 1) summaryParts.push("자연스러운 일상 조명");
-            else summaryParts.push("밝고 화사한 조명");
-        } else if (scale === "people") {
-            if (v === 0) summaryParts.push("주변에 사람이 거의 없는 한적한 분위기");
-            else if (v === 1) summaryParts.push("일상적인 수준의 인파");
-            else summaryParts.push("사람들로 붐비는 활기찬 분위기");
-        }
-    });
-    return summaryParts.join(", ");
-}
-
 // 기본 프롬프트 생성 (내러티브 기반)
 function buildBasePrompt(narrativeText) {
-    const contextSummary = buildContextSummary();
-    const cameraAngle = getCameraAngle();
-    
     // 프롬프트 엔지니어링 원칙 적용: 4 Elements + 6 Components
     const prompt = `# ROLE
 You are an expert 3D cartoon scene illustrator specialized in creating warm, friendly, and emotionally expressive character scenes.
@@ -417,13 +355,7 @@ ${narrativeText || "A user experiencing a moment in their daily life"}
 
 # OUTPUT DIRECTIVES
 ## Camera & Composition
-Camera Angle: ${cameraAngle}
-- Close-Up Shot: Focus on character's face and upper body, capture detailed facial expressions and emotions
-- Medium Shot: Show character from waist up with surrounding context visible
-- Wide Shot: Full body view with complete environment, show spatial relationships and overall scene
-
-## Environmental Context
-${contextSummary}
+Use Medium Shot as default: Show character from waist up with surrounding context visible
 
 ## Visual Requirements
 1. Accurately reflect the character's gender, age, and appearance
@@ -439,91 +371,6 @@ The image should feel warm, relatable, and empathetic. Avoid dramatic or exagger
     currentPrompt = prompt;
     
     return prompt;
-}
-
-
-
-// 맥락 파라미터 자동 조절 (AI 기반)
-async function adjustContextParameters(narrativeText) {
-    if (!narrativeText) return;
-    
-    // 맥락 파라미터 스키마 정의
-    const schema = {
-        description: "Contextual parameters for scene generation",
-        type: SchemaType.OBJECT,
-        properties: {
-            light: {
-                type: SchemaType.INTEGER,
-                description: "Lighting/atmosphere level: 0=dark, 1=normal, 2=bright",
-                nullable: false,
-            },
-            people: {
-                type: SchemaType.INTEGER,
-                description: "Crowd density: 0=empty, 1=normal, 2=crowded",
-                nullable: false,
-            },
-            distance: {
-                type: SchemaType.INTEGER,
-                description: "Camera distance: 0=close-up, 1=medium, 2=wide",
-                nullable: false,
-            }
-        },
-        required: ["light", "people", "distance"],
-    };
-    
-    const prompt = `# ROLE
-당신은 시각적 장면 분석 전문가입니다. 텍스트 내러티브를 분석하여 적절한 시각적 맥락 파라미터를 추천하는 능력을 가지고 있습니다.
-
-# TASK
-제공된 장면 내러티브를 분석하여, 이미지 생성에 필요한 3가지 맥락 파라미터의 최적값을 결정하세요.
-
-# INPUT: NARRATIVE
-${narrativeText}
-
-# OUTPUT DIRECTIVES
-다음 3가지 파라미터의 값을 0, 1, 2 중에서 선택하여 JSON 형식으로 반환하세요:
-
-1. light (분위기): 0=어두움, 1=보통, 2=밝음
-2. people (밀도): 0=한적함, 1=보통, 2=붐빔
-3. distance (거리): 0=클로즈업, 1=중간, 2=원경`;
-
-    try {
-        
-        const result = await textModel.generateContent({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: schema,
-            },
-        });
-        
-        const response = await result.response;
-        const text = response.text();
-        
-        // JSON 파싱 (스키마를 사용했으므로 이미 JSON 형식)
-        const params = JSON.parse(text);
-        
-        console.log('====== 파싱된 파라미터 ======');
-        console.log(params);
-        
-        // 슬라이더 값 업데이트
-        sliders.forEach((slider) => {
-            const scale = slider.dataset.scale;
-            if (params[scale] !== undefined) {
-                slider.value = params[scale];
-                // 레이블도 업데이트
-                const row = slider.closest(".adjuster-row");
-                const label = row?.querySelector(".value-label");
-                if (label) {
-                    label.textContent = labelForSlider(scale, params[scale]);
-                }
-            }
-        });
-        
-        console.log('맥락 파라미터가 자동으로 조절되었습니다.');
-    } catch (error) {
-        console.error("맥락 파라미터 자동 조절 실패:", error);
-    }
 }
 
 // 히스토리 사이드바 렌더링
@@ -559,7 +406,10 @@ function renderHistorySidebar() {
 
         const text = document.createElement("div");
         text.className = "history-text";
-        text.textContent = entry.narrativeText;
+        const truncatedText = entry.narrativeText.length > 50 
+            ? entry.narrativeText.substring(0, 50) + '...' 
+            : entry.narrativeText;
+        text.textContent = truncatedText;
 
         meta.appendChild(time);
         meta.appendChild(text);
@@ -574,6 +424,14 @@ function renderHistorySidebar() {
             geminiImg.src = entry.imgSrc;
             narrativeTextEl.innerHTML = entry.narrativeHtml;
             currentNarrative = entry.narrativeText;
+            currentPrompt = entry.prompt || "";
+            currentKeyEmotions = entry.keyEmotions || [];
+            currentAtmosphere = entry.atmosphere || [];
+            currentKeyElements = entry.keyElements || [];
+            currentPanoramaImgSrc = entry.panoramaImgSrc || null;
+            
+            // 키워드 패널 업데이트
+            displayKeywords();
 
             if (imageCard) {
                 imageCard.classList.add("has-image");
@@ -610,41 +468,24 @@ function startLoading() {
 function stopLoading() {
     if (!imageCard) return;
     if (respondentWindow && !respondentWindow.closed) {
-    respondentWindow.postMessage({ type: 'toggleLoading', value: true }, '*'); // 종료 시 false
+    respondentWindow.postMessage({ type: 'toggleLoading', value: true }, '*');
 }
     imageCard.classList.remove("is-loading");
     
     syncLoadingToRespondent(false);
-
-    if (sceneCommitBtn) {
-        sceneCommitBtn.disabled = false;
-        sceneCommitBtn.classList.remove('loading');
-        sceneCommitBtn.textContent = '장면 만들기';
-    }
-}
-
-// 비주얼 모드로 전환 (이미지가 생성된 상태)
-function ensureVisualMode() {
-    if (!imageCard) return;
-    imageCard.classList.add("has-image");
-}
-
-// Gemini API 호출 트리거
-function triggerGeminiGenerate() {
-    if (!geminiBtn) return;
-    startLoading();
-    geminiBtn.click();
 }
 
 // 새 이미지 로드 완료 시 처리
 function onNewImageLoaded() {
     if (isRestoring) {
         stopLoading();
-        ensureVisualMode();
+        if (!imageCard) return;
+        imageCard.classList.add("has-image");
         return;
     }
 
-    ensureVisualMode();
+    if (!imageCard) return;
+    imageCard.classList.add("has-image");
 
     if (mainContainer) {
         mainContainer.classList.add('show-left');
@@ -663,34 +504,45 @@ function updateInputInfoSummary() {
     const inputSummary = document.getElementById('inputSummary');
     if (!inputSummary) return;
 
-    const who = sceneWhoInput?.value.trim();
-    const what = sceneWhatInput?.value.trim();
-    const when = sceneWhenInput?.value.trim();
-    const where = sceneWhereInput?.value.trim();
-    const why = sceneWhyInput?.value.trim();
-    const how = sceneHowInput?.value.trim();
+    // 준비 모달의 정보 가져오기
+    const topic = document.getElementById('prepTopic')?.value.trim() || '';
+    const name = document.getElementById('prepName')?.value.trim() || '';
+    const age = document.getElementById('prepAge')?.value.trim() || '';
+    const gender = document.querySelector('input[name="prepGender"]:checked')?.value || '';
+    const notes = document.getElementById('prepNotes')?.value.trim() || '';
+    
+    // 사전 질문 가져오기
+    const questionInputs = document.querySelectorAll('.prep-question-input');
+    const questions = Array.from(questionInputs)
+        .map(input => input.value.trim())
+        .filter(val => val !== "");
 
-    if (!who && !what && !when && !where && !why && !how) {
-        inputSummary.innerHTML = '<p class="info-placeholder">장면을 생성하면 입력한 정보가 여기에 표시됩니다.</p>';
+    if (!topic && !name && !notes && questions.length === 0) {
+        inputSummary.innerHTML = '<p class="info-placeholder">인터뷰를 시작하면 입력한 정보가 여기에 표시됩니다.</p>';
         return;
     }
 
     let html = '';
-    if (when) html += `<div class="info-row"><span class="label">언제:</span><span>${when}</span></div>`;
-    if (where) html += `<div class="info-row"><span class="label">어디서:</span><span>${where}</span></div>`;
-    if (who) html += `<div class="info-row"><span class="label">누가:</span><span>${who}</span></div>`;
-    if (what) html += `<div class="info-row"><span class="label">무엇을:</span><span>${what}</span></div>`;
-    if (why) html += `<div class="info-row"><span class="label">왜:</span><span>${why}</span></div>`;
-    if (how) html += `<div class="info-row"><span class="label">어떻게:</span><span>${how}</span></div>`;
+    if (topic) html += `<div class="info-row"><span class="label">주제:</span><span>${topic}</span></div>`;
+    if (name) html += `<div class="info-row"><span class="label">이름:</span><span>${name}</span></div>`;
+    if (age) html += `<div class="info-row"><span class="label">나이:</span><span>${age}</span></div>`;
+    if (gender) html += `<div class="info-row"><span class="label">성별:</span><span>${gender}</span></div>`;
+    if (notes) html += `<div class="info-row"><span class="label">특이사항:</span><span>${notes}</span></div>`;
+    if (questions.length > 0) {
+        html += `<div class="info-row"><span class="label">사전 질문:</span><span>${questions.length}개</span></div>`;
+    }
 
     inputSummary.innerHTML = html;
+    
+    // 입력 정보 패널 펼치기
+    const inputInfoPanel = document.getElementById('inputInfoPanel');
+    if (inputInfoPanel && inputInfoPanel.classList.contains('collapsed')) {
+        inputInfoPanel.classList.remove('collapsed');
+    }
 }
 
 // ============================================
 // ============================================
-
-// 슬라이더 레이블 초기화
-setupSliderLabels();
 
 // 이미지 로드 완료 시 자동 처리
 if (geminiImg) {
@@ -698,7 +550,7 @@ if (geminiImg) {
 }
 
 // 360도 파노라마 실사 이미지 생성
-async function generatePanoramaImage() {
+async function generatePanoramaImage(modificationContext = '') {
     if (!currentNarrative) {
         throw new Error('현재 내러티브가 없습니다.');
     }
@@ -714,6 +566,8 @@ Generate a photorealistic 360-degree equirectangular panorama of the environment
 # SCENE CONTEXT
 Location: ${where}
 Situation: ${currentNarrative}
+${modificationContext ? `
+User's Additional Request: ${modificationContext}` : ''}
 
 # CRITICAL FORMAT REQUIREMENTS
 1. **Projection**: MUST be equirectangular (also called spherical or lat-long projection)
@@ -732,11 +586,13 @@ Situation: ${currentNarrative}
 - Perspective: Eye-level view (approximately 1.6m height)
 - Lighting: Natural, realistic lighting matching the scene context
 - Atmosphere: Authentic, immersive environmental detail
+- Cultural Context: All scenes must depict typical Korean everyday environments with Korean-style architecture, signage (in Korean), and cultural elements appropriate to South Korea
 
 # CONTENT REQUIREMENTS
 - **NO CHARACTERS OR PEOPLE**: Show only the environment, architecture, and objects
 - Include: Buildings, furniture, fixtures, ambient elements, spatial context
 - Exclude: Any human figures, characters, or representations of people
+- Korean Context: Include Korean-style elements such as Korean signage, typical Korean architecture, Korean brands, and culturally appropriate environmental details
 - Details: Realistic textures, materials, depth, and spatial relationships
 
 # EDGE CONNECTION GUIDELINES
@@ -751,10 +607,6 @@ The output should look similar to Google Street View panoramas - a complete 360-
 
 # TONE
 Photorealistic, immersive, and architecturally accurate. Focus on the spatial experience and environmental ambiance. Prioritize seamless edge continuity for proper 360° viewing.`;
-
-    console.log('══════ 파노라마 이미지 생성 프롬프트 ══════');
-    console.log(panoramaPrompt);
-    console.log('═══════════════════════════════');
     
     const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: panoramaPrompt }] }],
@@ -784,9 +636,9 @@ Photorealistic, immersive, and architecturally accurate. Focus on the spatial ex
 }
 
 // 현재 내러티브 기반 업데이트 (수정 요청 반영)
-async function updateNarrativeWithModification(userModification) {
-    if (!currentNarrative || !userModification) {
-        throw new Error('현재 내러티브나 수정 요청이 없습니다.');
+async function updateNarrativeWithModification(selectedQuestion, userAnswer) {
+    if (!currentNarrative || !selectedQuestion || !userAnswer) {
+        throw new Error('현재 내러티브, 질문 또는 답변이 없습니다.');
     }
     
     // 내러티브 스키마 정의
@@ -824,32 +676,64 @@ async function updateNarrativeWithModification(userModification) {
     const prompt = `# ROLE
 당신은 사용자 경험 시나리오 작가입니다. 기존 내러티브를 사용자의 수정 요청에 따라 업데이트하는 전문가입니다.
 
-# TASK
-기존 내러티브에 사용자의 수정 요청을 반영하여 새로운 내러티브를 작성하세요. 수정된 부분을 자연스럽게 통합하여 일관된 이야기를 만드세요.
-
 # CONTEXT
-## 현재 내러티브
+※ **현재 상황**: 인터뷰어와 응답자 간의 심층 면담이 진행 중입니다. 인터뷰어가 심층 질문을 던졌고, 응답자가 답변했습니다. 이 답변을 바탕으로 기존 내러티브를 업데이트해야 합니다.
+
+## 현재 내러티브 (업데이트 전)
 ${currentNarrative}
 
-## 사용자 수정 요청
-${userModification}
+## 현재 키워드
+- 주요 감정: ${currentKeyEmotions.join(', ')}
+- 분위기: ${currentAtmosphere.join(', ')}
+- 핵심 요소: ${currentKeyElements.join(', ')}
+
+## 인터뷰 질의응답
+### 인터뷰어의 질문
+${selectedQuestion}
+
+### 응답자의 답변
+${userAnswer}
+
+# TASK
+인터뷰어의 질문에 대한 응답자의 답변을 분석하여, 기존 내러티브에 새롭게 드러난 정보를 자연스럽게 통합하세요. 답변에서 드러난 맥락, 감정, 구체적 디테일을 반영하여 더 풍부하고 정확한 내러티브로 업데이트하세요.
+
+# CRITICAL DISTINCTION
+※ **실제 사건 vs 희망사항 구분**
+- 응답자의 답변에서 **실제로 일어난 과거의 사건**만을 내러티브에 포함하세요.
+- "좋았을 텐데", "했으면 좋겠다", "했어야 했다", "했다면" 같은 표현은 **희망사항이나 후회**이므로 사건으로 취급하지 마세요.
+- 예시:
+  - 잘못된 해석: "더 친절했으면 좋았을 텐데" → "직원은 친절했다" (실제로 일어나지 않은 일)
+  - 올바른 해석: "더 친절했으면 좋았을 텐데" → "직원의 태도가 무뚝하게 느껴져서 아쉬움이 남았다"
 
 # OUTPUT DIRECTIVES
+## Format Requirements
 1. narrative (string): 5-8문장의 업데이트된 내러티브
-   - 기존 내러티브의 흥름을 유지하면서 수정 사항을 반영
+   - 기존 내러티브의 흐름을 유지하면서 수정 사항을 반영
    - 자연스럽고 일관된 흐름 유지
    - 구체적이고 감각적인 묘사
+   - 1인칭 시점 유지
 
-2. key_emotions (array): 업데이트된 장면의 주요 감정 3-5개
-3. atmosphere (array): 업데이트된 분위기 키워드 3-5개
-4. key_elements (array): 업데이트된 핵심 요소 3-5개
+2. key_emotions (array of strings): **반드시 3-5개의 구체적인 감정 키워드를 배열로 제공하세요**
+   - 예시: ["불안함", "당혹스러움", "호기심", "안도감"]
+   - 업데이트된 내러티브에서 유추되는 감정만 포함
+   - 추상적이거나 모호한 표현 피하기
+   - 사용자의 답변에서 드러나는 감정 변화를 반영
+
+3. atmosphere (array of strings): **반드시 3-5개의 분위기 키워드를 배열로 제공하세요**
+   - 예시: ["긴장감", "분주함", "조용함", "따뜻함"]
+   - 업데이트된 상황의 분위기 키워드
+   - 장소, 시간대, 주변 환경의 영향을 반영
+
+4. key_elements (array of strings): **반드시 3-5개의 시각적/맥락적 요소를 배열로 제공하세요**
+   - 예시: ["계산대", "터치스크린", "긴 줄", "형광등"]
+   - 업데이트된 장면의 핵심 사물, 공간, 인터페이스 등
+   - 사용자가 언급한 새로운 요소를 반드시 포함
+   - **중요**: 사용자가 희망했지만 실제로 일어나지 않은 것들은 포함하지 마세요
+
+**중요: 모든 필드(narrative, key_emotions, atmosphere, key_elements)는 반드시 제공되어야 하며, 빈 배열이 아닌 유효한 값들을 포함해야 합니다. 각 배열은 최소 3개 이상의 항목을 포함해야 합니다.**
 
 # TONE
-사실적이고 공감적이며, 사용자의 수정 의도를 정확하게 반영한 톤을 유지하세요.`;
-
-    console.log('══════ 내러티브 업데이트 프롬프트 ══════');
-    console.log(prompt);
-    console.log('═════════════════════════');
+인터뷰 상황을 염두에 두고, 응답자의 답변을 존중하며 사실적이고 공감적인 톤을 유지하세요. 응답자가 실제로 경험한 것과 희망했던 것을 혼동하지 말고, 답변에서 드러난 진실된 경험만을 내러티브에 반영하세요.`;
 
     try {
         const result = await textModel.generateContent({
@@ -862,13 +746,23 @@ ${userModification}
         
         const response = await result.response;
         const text = response.text();
+        
         const narrativeData = JSON.parse(text);
         
-        console.log('══════ 업데이트된 내러티브 데이터 ══════');
-        console.log('내러티브:', narrativeData.narrative);
-        console.log('주요 감정:', narrativeData.key_emotions);
-        console.log('분위기:', narrativeData.atmosphere);
-        console.log('핵심 요소:', narrativeData.key_elements);
+        // 데이터 검증
+        if (!narrativeData.narrative) {
+            console.error('내러티브가 비어있습니다.');
+            throw new Error('내러티브가 생성되지 않았습니다.');
+        }
+        if (!narrativeData.key_emotions || narrativeData.key_emotions.length === 0) {
+            console.error('주요 감정이 비어있습니다.');
+        }
+        if (!narrativeData.atmosphere || narrativeData.atmosphere.length === 0) {
+            console.error('분위기가 비어있습니다.');
+        }
+        if (!narrativeData.key_elements || narrativeData.key_elements.length === 0) {
+            console.error('핵심 요소가 비어있습니다.');
+        }
         
         // 키워드 데이터 저장
         currentKeyEmotions = narrativeData.key_emotions || [];
@@ -880,12 +774,13 @@ ${userModification}
         
         return {
             narrative: narrativeData.narrative,
-            keyEmotions: currentKeyEmotions,
+            key_emotions: currentKeyEmotions,
             atmosphere: currentAtmosphere,
-            keyElements: currentKeyElements
+            key_elements: currentKeyElements
         };
     } catch (error) {
         console.error("내러티브 업데이트 실패:", error);
+        console.error("에러 상세:", error.message);
         throw error;
     }
 }
@@ -904,9 +799,6 @@ async function modifyImageWithInput(currentImageSrc, modificationText, updatedNa
     
     const mimeType = base64Match[1];
     const base64Data = base64Match[2];
-    
-    const contextSummary = buildContextSummary();
-    const cameraAngle = getCameraAngle();
     
     const modificationPrompt = `# ROLE
 You are an expert 3D cartoon scene illustrator specialized in modifying existing scenes based on user feedback.
@@ -931,12 +823,9 @@ ${modificationText}
 
 # OUTPUT DIRECTIVES
 ## Camera & Composition
-Camera Angle: ${cameraAngle}
+- Use Medium Shot as default: Show character from waist up with surrounding context visible
 - Maintain the same camera angle and composition as the original image
 - Apply modifications while preserving the overall scene structure
-
-## Environmental Context
-${contextSummary}
 
 ## Modification Guidelines
 1. Keep the character's appearance and position consistent with the original
@@ -948,11 +837,6 @@ ${contextSummary}
 # TONE
 The modified image should feel like a natural evolution of the original scene, with the requested changes integrated smoothly and authentically.`;
     
-    console.log('══════ 이미지 수정 프롬프트 ══════');
-    console.log(modificationPrompt);
-    console.log('══════════════════════');
-    
-    // 현재 프롬프트 저장
     currentPrompt = modificationPrompt;
     
     const result = await model.generateContent({
@@ -1023,44 +907,6 @@ if (historyToggleBtn) {
 }
 
 // 장면 만들기 버튼
-if (sceneCommitBtn) {
-    sceneCommitBtn.addEventListener("click", async () => {
-        if (sceneCommitBtn.disabled) return;
-        
-        sceneCommitBtn.disabled = true;
-        sceneCommitBtn.classList.add('loading');
-        sceneCommitBtn.textContent = '생성 중';
-        
-        sceneCommitted = true;
-        updateInputInfoSummary();
-
-        let narrativeHtml = "";
-        if (narrativeTextEl) {
-            try {
-                const result = await generateNarrativeWithAI();
-                if (result && result.narrative) {
-                    narrativeHtml = result.narrative;
-                    narrativeTextEl.innerHTML = narrativeHtml;
-                    currentNarrative = narrativeHtml.replace(/<br\s*\/?>/gi, " ").replace(/\s+/g, " ").trim();
-                }
-            } catch (error) {
-                console.error("내러티브 생성 중 오류:", error);
-                currentNarrative = "";
-            }
-        }
-
-        if (geminiInput) {
-            const basePrompt = buildBasePrompt(currentNarrative);
-            geminiInput.value = basePrompt;
-        }
-
-        triggerGeminiGenerate();
-        
-        // 맥락 파라미터 자동 조절
-        await adjustContextParameters(currentNarrative);
-    });
-}
-
 // 심층 질문 3개 생성
 async function generateDeepQuestions(narrative) {
     const questionListEl = document.getElementById('aiQuestionList');
@@ -1098,7 +944,7 @@ async function generateDeepQuestions(narrative) {
 `;
 
     try {
-        const result = await model.generateContent(prompt);
+        const result = await textModel.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
 
@@ -1165,7 +1011,7 @@ if (replySubmitBtn) {
         e.preventDefault();
 
         if (!sceneCommitted) {
-            sceneCommitBtn?.click();
+            alert('먼저 장면을 만들어주세요.');
             return;
         }
 
@@ -1175,70 +1021,78 @@ if (replySubmitBtn) {
             return;
         }
         
+        // 버튼 비활성화 및 로딩 상태
+        replySubmitBtn.disabled = true;
+        const originalHTML = replySubmitBtn.innerHTML;
+        replySubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>반영 중...</span>';
+        replySubmitBtn.style.backgroundColor = '#94a3b8';
+        replySubmitBtn.style.cursor = 'not-allowed';
+        
         try {
-            // [1] 생성 시작: 전체 로딩 켜기 & 파노라마 버튼 비활성화
-            startLoading();
-            updatePanoramaBtnState(false); 
+            // [1] 내러티브 업데이트 전 검증
+            if (!currentNarrative) {
+                alert('먼저 초기 장면을 생성해주세요.');
+                replySubmitBtn.disabled = false;
+                replySubmitBtn.innerHTML = originalHTML;
+                replySubmitBtn.style.backgroundColor = '';
+                replySubmitBtn.style.cursor = '';
+                return;
+            }
 
-            // [2] 내러티브 업데이트 (AI 호출)
-            const contextData = `질문: ${currentSelectedQuestion}\n답변: ${answer}\n이 답변의 심리적, 상황적 맥락을 반영하여 기존 내러티브를 업데이트해줘.`;
-            const updatedNarrativeData = await updateNarrativeWithModification(contextData);
+            // [3] 내러티브 업데이트 (AI 호출)
+            const updatedNarrativeData = await updateNarrativeWithModification(currentSelectedQuestion, answer);
             
-            // 💡 중요: 전역 변수에 즉시 할당 (에러 방지)
+            // 전역 변수에 즉시 할당
             currentNarrative = updatedNarrativeData.narrative;
+            currentKeyEmotions = updatedNarrativeData.key_emotions || [];
+            currentAtmosphere = updatedNarrativeData.atmosphere || [];
+            currentKeyElements = updatedNarrativeData.key_elements || [];
             
+            // 화면에 내러티브 표시
             if (narrativeTextEl) {
                 narrativeTextEl.innerHTML = currentNarrative;
             }
             
-            // [3] 메인 이미지 수정
-            const currentImageSrc = geminiImg?.src;
-            if (!currentImageSrc) throw new Error('현재 이미지가 없습니다.');
-            
-            const modifiedImageSrc = await modifyImageWithInput(
-                currentImageSrc, 
-                "사용자의 답변에 따라 새롭게 업데이트된 상황과 감정 변화를 반영하여 이미지를 자연스럽게 다시 그려줘.", 
-                currentNarrative
-            );
-            if (geminiImg) geminiImg.src = modifiedImageSrc;
+            // 키워드 패널 업데이트
+            displayKeywords();
 
-            // [4] 파노라마 생성 (currentNarrative가 설정된 후 호출)
-            let newPanoramaSrc = null;
-            try {
-                // 💡 생성 중임을 알리는 '파노라마 전용 로딩'은 generatePanoramaImage 내부에서 제어됨
-                newPanoramaSrc = await generatePanoramaImage(); 
-                
-                // ✅ 파노라마 로드 완료 후 버튼 상태 업데이트 (색상 및 활성화)
-                if (newPanoramaSrc) {
-                    updatePanoramaBtnState(true); 
-                    // 관리자 화면의 전역 변수에도 소스 저장 (전체화면 열기용)
-                    currentPanoramaImgSrc = newPanoramaSrc; 
-                }
-            } catch (pError) {
-                console.warn("파노라마 생성 실패:", pError);
-                updatePanoramaBtnState(false);
-            }
-
-            // [5] 심층 질문 생성 (이 작업이 완료될 때까지 로딩 스피너 유지)
+            // [4] 심층 질문 재생성
             await generateDeepQuestions(currentNarrative);
 
-            // [6] 히스토리 저장
+            // [5] 히스토리 저장 (기존 이미지 유지)
+            const currentImageSrc = geminiImg?.src || '';
+            const currentPanoramaSrc = currentPanoramaImgSrc || null;
+            
             const newSceneEntry = {
                 id: Date.now(),
                 time: new Date().toLocaleString("ko-KR", { hour12: false }),
-                imgSrc: modifiedImageSrc,
-                panoramaImgSrc: newPanoramaSrc,
+                imgSrc: currentImageSrc,
+                panoramaImgSrc: currentPanoramaSrc,
                 narrativeHtml: currentNarrative,
                 narrativeText: currentNarrative,
                 prompt: currentPrompt || "",
                 keyEmotions: [...currentKeyEmotions],
                 atmosphere: [...currentAtmosphere],
                 keyElements: [...currentKeyElements],
+                sceneNumber: currentSceneNumber,
+                variationNumber: currentVariationNumber,
             };
             sceneHistory.push(newSceneEntry);
+            
+            // 로그 기록
+            interactionLog.push({
+                type: 'question_answer',
+                timestamp: new Date().toLocaleString("ko-KR", { hour12: false }),
+                question: currentSelectedQuestion,
+                answer: answer,
+                narrative: currentNarrative,
+                keyEmotions: [...currentKeyEmotions],
+                atmosphere: [...currentAtmosphere],
+                keyElements: [...currentKeyElements],
+            });
             renderHistorySidebar(); 
 
-            // [7] 응답자 화면 동기화
+            // [6] 응답자 화면 동기화
             if (respondentWindow && !respondentWindow.closed) {
                 const tags = [...currentKeyEmotions, ...currentAtmosphere, ...currentKeyElements].map(t => `#${t}`);
                 respondentWindow.postMessage({
@@ -1246,14 +1100,13 @@ if (replySubmitBtn) {
                     narrative: currentNarrative,
                     question: currentSelectedQuestion,
                     parameters: tags,
-                    panoramaSrc: newPanoramaSrc
+                    panoramaSrc: currentPanoramaSrc
                 }, '*');
             }
 
-            // [8] 기타 UI 정리
-            await adjustContextParameters(currentNarrative);
+            // [7] 기타 UI 정리
             replyInput.value = '';
-            currentSelectedQuestion = ""; // 💡 [추가] 다음 턴을 위해 선택한 질문 초기화
+            currentSelectedQuestion = "";
             if (questionReplyArea) {
                 questionReplyArea.classList.add('disabled');
                 document.querySelectorAll('.question-item').forEach(el => el.classList.remove('selected'));
@@ -1262,22 +1115,24 @@ if (replySubmitBtn) {
         } catch (error) {
             console.error('장면 진화 오류:', error);
             alert('장면을 업데이트하는 중 오류가 발생했습니다.');
-            updatePanoramaBtnState(false);
         } finally {
-            // [9] 모든 프로세스(이미지+파노라마+질문) 종료 후 로딩 끄기
-            stopLoading(); 
+            // 버튼 복원
+            replySubmitBtn.disabled = false;
+            replySubmitBtn.innerHTML = originalHTML;
+            replySubmitBtn.style.backgroundColor = '';
+            replySubmitBtn.style.cursor = '';
         }
     });
 }
 
 // ============================================
-// 2. 이미지 리믹스 제출 (내러티브 고정 + 시각적 요소만 수정)
+// 2. 이미지 리믹스 & 새 장면 생성 제출
 // ============================================
 if (remixSubmitBtn) {
     remixSubmitBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         if (!sceneCommitted) {
-            sceneCommitBtn?.click();
+            alert('먼저 장면을 만들어주세요.');
             return;
         }
         
@@ -1287,19 +1142,62 @@ if (remixSubmitBtn) {
         try {
             startLoading();
             
-            // 내러티브는 건드리지 않고, 이미지만 수정
-            const currentImageSrc = geminiImg?.src;
-            if (!currentImageSrc) throw new Error('현재 이미지가 없습니다.');
-            
-            const modifiedImageSrc = await modifyImageWithInput(currentImageSrc, modificationCommand, currentNarrative);
-            if (geminiImg) geminiImg.src = modifiedImageSrc;
+            if (currentEditMode === 'remix') {
+                // REMIX 모드: 현재 이미지 수정
+                const currentImageSrc = geminiImg?.src;
+                if (!currentImageSrc) throw new Error('현재 이미지가 없습니다.');
+                
+                // 이미지 수정
+                const modifiedImageSrc = await modifyImageWithInput(currentImageSrc, modificationCommand, currentNarrative);
+                if (geminiImg) geminiImg.src = modifiedImageSrc;
+                
+                // 파노라마 재생성 (사용자의 수정 요청 반영)
+                try {
+                    const newPanoramaSrc = await generatePanoramaImage(modificationCommand);
+                    if (newPanoramaSrc) {
+                        currentPanoramaImgSrc = newPanoramaSrc;
+                        updatePanoramaBtnState(true);
+                    }
+                } catch (e) {
+                    console.warn("파노라마 재생성 실패", e);
+                }
+                
+                // 변형 번호 증가 (같은 scene의 다른 버전)
+                currentVariationNumber++;
+                
+                // 히스토리 저장
+                sceneHistory.push({
+                    id: Date.now(),
+                    time: new Date().toLocaleString("ko-KR", { hour12: false }),
+                    imgSrc: modifiedImageSrc,
+                    panoramaImgSrc: currentPanoramaImgSrc,
+                    narrativeHtml: currentNarrative,
+                    narrativeText: currentNarrative,
+                    prompt: currentPrompt,
+                    keyEmotions: [...currentKeyEmotions],
+                    atmosphere: [...currentAtmosphere],
+                    keyElements: [...currentKeyElements],
+                    sceneNumber: currentSceneNumber,
+                    variationNumber: currentVariationNumber,
+                });
+                renderHistorySidebar();
+                
+                // 로그 기록
+                interactionLog.push({
+                    type: 'image_modify',
+                    timestamp: new Date().toLocaleString("ko-KR", { hour12: false }),
+                    sceneNumber: currentSceneNumber,
+                    variationNumber: currentVariationNumber,
+                    request: modificationCommand,
+                });
+            }
             
             // UI 초기화
             remixInput.value = '';
             
         } catch (error) {
-            console.error('이미지 리믹스 오류:', error);
-            alert('이미지 수정 중 오류가 발생했습니다.');
+            console.error('이미지 처리 오류:', error);
+            alert('이미지 처리 중 오류가 발생했습니다.');
         } finally {
             stopLoading();
         }
@@ -1307,8 +1205,27 @@ if (remixSubmitBtn) {
 }
 
 // ============================================
-// 3. 우측 사이드바(리믹스 패널) 토글
+// 3. 우측 사이드바(리믹스 패널) 토글 및 모드 선택
 // ============================================
+const remixModeBtn = document.getElementById('remixModeBtn');
+const createModeBtn = document.getElementById('createModeBtn');
+
+if (remixModeBtn) {
+    remixModeBtn.addEventListener('click', () => {
+        currentEditMode = 'remix';
+        remixModeBtn.classList.add('active');
+        createModeBtn?.classList.remove('active');
+    });
+}
+
+if (createModeBtn) {
+    createModeBtn.addEventListener('click', () => {
+        currentEditMode = 'create';
+        createModeBtn.classList.add('active');
+        remixModeBtn?.classList.remove('active');
+    });
+}
+
 if (remixToggleBtn) {
     remixToggleBtn.addEventListener("click", () => {
         mainContainer.classList.toggle('show-right');
@@ -1401,49 +1318,111 @@ if (exportBtn) {
             
             const zip = new JSZip();
             
-            // 각 장면을 폴더별로 저장
-            for (let i = 0; i < sceneHistory.length; i++) {
-                const scene = sceneHistory[i];
-                const folderName = `scene_${i + 1}_${scene.time.replace(/[:/\s]/g, '-')}`;
-                const folder = zip.folder(folderName);
+            // 응답자 정보 가져오기
+            const profileCard = document.querySelector('.user-profile-card');
+            const respondentName = profileCard?.dataset.name || '응답자';
+            const respondentGender = profileCard?.dataset.gender || '미상';
+            const respondentAge = profileCard?.dataset.age || '미상';
+            
+            // 준비 단계 정보 가져오기
+            const topic = document.getElementById("prepTopic")?.value.trim() || "지정되지 않은 주제";
+            const prepNotes = document.getElementById("prepNotes")?.value.trim() || "특이사항 없음";
+            
+            // 사전 질문 리스트 모으기
+            const questionInputs = document.querySelectorAll('.prep-question-input');
+            const prepQuestions = Array.from(questionInputs)
+                .map(input => input.value.trim())
+                .filter(val => val !== "");
+            
+            // 응답자 이름으로 폴더 생성
+            const mainFolder = zip.folder(respondentName);
+            if (!mainFolder) throw new Error('폴더 생성 실패');
+            
+            // 통합 로그 생성
+            let logText = `[주제: ${topic}]\n\n`;
+            logText += `[인터뷰 대상자 정보]\n`;
+            logText += `이름: ${respondentName}\n`;
+            logText += `성별: ${respondentGender}\n`;
+            logText += `나이: ${respondentAge}\n`;
+            if (prepNotes !== "특이사항 없음") {
+                logText += `특이사항: ${prepNotes}\n`;
+            }
+            if (prepQuestions.length > 0) {
+                logText += `\n사전 준비 질문:\n`;
+                prepQuestions.forEach((q, i) => {
+                    logText += `${i + 1}. ${q}\n`;
+                });
+            }
+            logText += `\n${'='.repeat(60)}\n\n`;
+            
+            logText += `[로그 데이터]\n\n`;
+            
+            // 로그 순서대로 정리
+            interactionLog.forEach((log, idx) => {
+                if (log.type === 'initial_response') {
+                    logText += `## 초기 응답\n`;
+                    logText += `# Narrative:\n${log.narrative}\n\n`;
+                    logText += `# Key Emotions:\n${log.keyEmotions.join(', ')}\n\n`;
+                    logText += `# Atmosphere:\n${log.atmosphere.join(', ')}\n\n`;
+                    logText += `# Key Elements:\n${log.keyElements.join(', ')}\n\n`;
+                    logText += `${'='.repeat(60)}\n\n`;
+                    
+                } else if (log.type === 'question_answer') {
+                    logText += `## 질의응답\n`;
+                    logText += `질문: ${log.question}\n`;
+                    logText += `답변: ${log.answer}\n\n`;
+                    logText += `수정된 Narrative:\n${log.narrative}\n\n`;
+                    logText += `# Key Emotions:\n${log.keyEmotions.join(', ')}\n\n`;
+                    logText += `# Atmosphere:\n${log.atmosphere.join(', ')}\n\n`;
+                    logText += `# Key Elements:\n${log.keyElements.join(', ')}\n\n`;
+                    logText += `${'='.repeat(60)}\n\n`;
+                    
+                } else if (log.type === 'image_modify') {
+                    logText += `## 이미지 수정 요청 (Remix)\n`;
+                    logText += `생성된 이미지: scene_${log.sceneNumber}-${log.variationNumber}.png\n`;
+                    logText += `수정 요청 내용: ${log.request}\n\n`;
+                    logText += `${'='.repeat(60)}\n\n`;
+                    
+                } else if (log.type === 'scene_create') {
+                    logText += `## 새 장면 생성 (Create)\n`;
+                    logText += `생성된 이미지: scene_${log.sceneNumber}-${log.variationNumber}.png\n`;
+                    logText += `생성 요청 내용: ${log.request}\n\n`;
+                    logText += `Narrative:\n${log.narrative}\n\n`;
+                    logText += `# Key Emotions:\n${log.keyEmotions.join(', ')}\n\n`;
+                    logText += `# Atmosphere:\n${log.atmosphere.join(', ')}\n\n`;
+                    logText += `# Key Elements:\n${log.keyElements.join(', ')}\n\n`;
+                    logText += `${'='.repeat(60)}\n\n`;
+                }
+            });
+            
+            // 통합 로그 파일 저장
+            mainFolder.file('interview_log.txt', logText);
+            
+            // 이미지 저장 (scene_1-1.png 형식)
+            const imageMap = new Map(); // sceneNumber-variationNumber를 키로 사용
+            
+            sceneHistory.forEach((scene) => {
+                const sceneNum = scene.sceneNumber || 1;
+                const varNum = scene.variationNumber || 1;
+                const imageKey = `${sceneNum}-${varNum}`;
                 
-                // 이미지 저장
+                // 같은 번호의 이미지가 여러 개 있을 경우 마지막 것만 저장
+                imageMap.set(imageKey, scene);
+            });
+            
+            // 이미지 파일 저장
+            for (const [key, scene] of imageMap) {
+                // 메인 이미지 저장
                 if (scene.imgSrc && scene.imgSrc.startsWith('data:')) {
                     const base64Data = scene.imgSrc.split(',')[1];
-                    folder.file('image.png', base64Data, { base64: true });
+                    mainFolder.file(`scene_${key}.png`, base64Data, { base64: true });
                 }
                 
                 // 파노라마 이미지 저장
                 if (scene.panoramaImgSrc && scene.panoramaImgSrc.startsWith('data:')) {
                     const panoramaBase64Data = scene.panoramaImgSrc.split(',')[1];
-                    folder.file('panorama_360.png', panoramaBase64Data, { base64: true });
+                    mainFolder.file(`scene_${key}_panorama.png`, panoramaBase64Data, { base64: true });
                 }
-                
-                // 내러티브 저장
-                folder.file('narrative.txt', scene.narrativeText || '내러티브 없음');
-                
-                // 프롬프트 저장
-                folder.file('prompt.txt', scene.prompt || '프롬프트 정보 없음');
-                
-                // 키워드 저장
-                if (scene.keyEmotions && scene.keyEmotions.length > 0) {
-                    folder.file('key_emotions.txt', scene.keyEmotions.join('\n'));
-                }
-                if (scene.keyElements && scene.keyElements.length > 0) {
-                    folder.file('key_elements.txt', scene.keyElements.join('\n'));
-                }
-                
-                // 메타데이터 저장
-                const metadata = {
-                    id: scene.id,
-                    time: scene.time,
-                    narrativeHtml: scene.narrativeHtml,
-                    narrativeText: scene.narrativeText,
-                    keyEmotions: scene.keyEmotions || [],
-                    atmosphere: scene.atmosphere || [],
-                    keyElements: scene.keyElements || []
-                };
-                folder.file('metadata.json', JSON.stringify(metadata, null, 2));
             }
             
             // ZIP 생성 및 다운로드
@@ -1451,21 +1430,21 @@ if (exportBtn) {
             const url = URL.createObjectURL(content);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `contextual_inquiry_${new Date().toISOString().split('T')[0]}.zip`;
+            a.download = `${respondentName}_${new Date().toISOString().split('T')[0]}.zip`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
             exportBtn.disabled = false;
-            exportBtn.textContent = '내보내기';
+            exportBtn.innerHTML = '<i class="fas fa-file-export"></i> 내보내기';
             
-            alert(`${sceneHistory.length}개의 장면이 성공적으로 내보내졌습니다.`);
+            alert(`인터뷰 데이터가 성공적으로 내보내졌습니다.`);
         } catch (error) {
             console.error('내보내기 오류:', error);
-            alert('내보내기 중 오류가 발생했습니다.');
+            alert('내보내기 중 오류가 발생했습니다: ' + error.message);
             exportBtn.disabled = false;
-            exportBtn.textContent = '내보내기';
+            exportBtn.innerHTML = '<i class="fas fa-file-export"></i> 내보내기';
         }
     });
 }
@@ -1518,10 +1497,17 @@ if (startInterviewBtn) {
         if (headerRight) headerRight.classList.remove('is-hidden');
 
         document.getElementById("headerTopicDisplay").textContent = `| ${topic}`;
-        document.getElementById("mainTopicDisplay").textContent = `현재 주제: ${topic}`;
         document.getElementById("profileNameDisplay").textContent = name;
         document.getElementById("profileAgeDisplay").textContent = age;
         document.getElementById("profileGenderDisplay").textContent = gender;
+        
+        // 프로필 카드에 dataset 설정 (프롬프트에서 사용)
+        const profileCard = document.querySelector('.user-profile-card');
+        if (profileCard) {
+            profileCard.dataset.name = name;
+            profileCard.dataset.gender = gender;
+            profileCard.dataset.age = age;
+        }
 
         if (questions.length > 0) {
             document.getElementById("prepQuestionList").innerHTML = questions.map(q => `
@@ -1531,6 +1517,9 @@ if (startInterviewBtn) {
                 </div>
             `).join('');
         }
+        
+        // 입력 정보 표시
+        updateInputInfoSummary();
 
         // [3] 자동 생성 시작
         sceneCommitted = true;
@@ -1557,7 +1546,10 @@ if (startInterviewBtn) {
             let panoramaSrc = null;
             try {
                 panoramaSrc = await generatePanoramaImage();
-                if (panoramaSrc) updatePanoramaBtnState(true); // 성공 시 활성화
+                if (panoramaSrc) {
+                    updatePanoramaBtnState(true); // 성공 시 활성화
+                    currentPanoramaImgSrc = panoramaSrc; // 전역 변수에 저장
+                }
             } catch (e) { console.warn("파노라마 생성 실패", e); }
 
             // ④ 후속 작업 (히스토리 저장 및 심층 질문)
@@ -1572,11 +1564,24 @@ if (startInterviewBtn) {
                 keyEmotions: currentKeyEmotions,
                 atmosphere: currentAtmosphere,
                 keyElements: currentKeyElements,
+                sceneNumber: currentSceneNumber,
+                variationNumber: currentVariationNumber,
             });
+            
+            // 초기 응답 로그 기록
+            interactionLog.push({
+                type: 'initial_response',
+                timestamp: new Date().toLocaleString("ko-KR", { hour12: false }),
+                narrative: currentNarrative,
+                keyEmotions: [...currentKeyEmotions],
+                atmosphere: [...currentAtmosphere],
+                keyElements: [...currentKeyElements],
+            });
+            
             renderHistorySidebar();
             
             await generateDeepQuestions(currentNarrative);
-            await adjustContextParameters(currentNarrative);
+            displayKeywords();
             
             // ⑤ 동기화
             setTimeout(() => { syncToRespondent(panoramaSrc); }, 1000);
