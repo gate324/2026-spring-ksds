@@ -555,19 +555,19 @@ async function generatePanoramaImage(modificationContext = '') {
         throw new Error('현재 내러티브가 없습니다.');
     }
     
-    const where = sceneWhereInput?.value.trim() || '장소';
+    // 강제 할당하던 where 변수 삭제
+    // AI에게 내러티브를 분석하여 장소를 스스로 유추하도록 프롬프트 수정
     
     const panoramaPrompt = `# ROLE
 You are an expert photographer specializing in 360-degree equirectangular panoramic photography.
 
 # TASK
-Generate a photorealistic 360-degree equirectangular panorama of the environment described below. This must be in the exact equirectangular projection format (2:1 aspect ratio) suitable for 360-degree immersive viewing.
+Generate a photorealistic 360-degree equirectangular panorama of the environment described in the Scene Context below. 
+Analyze the 'Situation' (narrative) to determine the most appropriate location, time, and setting for this panorama.
 
 # SCENE CONTEXT
-Location: ${where}
-Situation: ${currentNarrative}
-${modificationContext ? `
-User's Additional Request: ${modificationContext}` : ''}
+Situation (Narrative): ${currentNarrative}
+${modificationContext ? `User's Additional Request: ${modificationContext}` : ''}
 
 # CRITICAL FORMAT REQUIREMENTS
 1. **Projection**: MUST be equirectangular (also called spherical or lat-long projection)
@@ -590,7 +590,7 @@ User's Additional Request: ${modificationContext}` : ''}
 
 # CONTENT REQUIREMENTS
 - **NO CHARACTERS OR PEOPLE**: Show only the environment, architecture, and objects
-- Include: Buildings, furniture, fixtures, ambient elements, spatial context
+- Include: Buildings, furniture, fixtures, ambient elements, spatial context inferred from the narrative
 - Exclude: Any human figures, characters, or representations of people
 - Korean Context: Include Korean-style elements such as Korean signage, typical Korean architecture, Korean brands, and culturally appropriate environmental details
 - Details: Realistic textures, materials, depth, and spatial relationships
@@ -606,7 +606,7 @@ User's Additional Request: ${modificationContext}` : ''}
 The output should look similar to Google Street View panoramas - a complete 360-degree environmental capture that wraps seamlessly without any visible seam when viewed in a panoramic viewer.
 
 # TONE
-Photorealistic, immersive, and architecturally accurate. Focus on the spatial experience and environmental ambiance. Prioritize seamless edge continuity for proper 360° viewing.`;
+Photorealistic, immersive, and architecturally accurate. Focus on the spatial experience and environmental ambiance inferred from the narrative. Prioritize seamless edge continuity for proper 360° viewing.`;
     
     const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: panoramaPrompt }] }],
@@ -1611,3 +1611,123 @@ function updatePanoramaBtnState(isReady) {
         expandBtn.classList.remove("active");
     }
 }
+
+// ============================================
+// 스토리보드 (최종 저장 및 리뷰) 기능 구현부
+// ============================================
+const storyboardSection = document.getElementById('storyboardSection');
+const mainSection = document.getElementById('mainSection');
+const timelineThumbnails = document.getElementById('timelineThumbnails');
+const sbNarrative = document.getElementById('sbNarrative');
+const sbQaLog = document.getElementById('sbQaLog');
+const sbKeywords = document.getElementById('sbKeywords');
+const sbSceneTitle = document.getElementById('sbSceneTitle');
+const closeStoryboardBtn = document.getElementById('closeStoryboardBtn');
+
+// 💡 HTML에 직접 추가한 버튼 가져오기 (동적 생성 코드 삭제됨)
+const openStoryboardBtn = document.getElementById('openStoryboardBtn');
+
+let sbPanoramaViewer = null;
+let currentEditingSceneIndex = 0;
+
+// [1] 스토리보드 열기 (최종 단계 진입)
+if (openStoryboardBtn) {
+    openStoryboardBtn.addEventListener('click', () => {
+        if (sceneHistory.length === 0) {
+            alert('아직 생성된 씬(Scene)이 없습니다. 인터뷰를 먼저 진행해주세요.');
+            return;
+        }
+        
+        // 최종 정리 화면으로 전환
+        mainSection.style.display = 'none';
+        storyboardSection.style.display = 'flex';
+        
+        renderTimeline();
+        loadSceneToStoryboard(0); // 첫 번째 씬 로드
+    });
+}
+
+// [2] 인터뷰 화면으로 돌아가기 (선택 사항: 닫기 버튼을 누를 경우)
+if (closeStoryboardBtn) {
+    closeStoryboardBtn.addEventListener('click', () => {
+        storyboardSection.style.display = 'none';
+        mainSection.style.display = 'grid'; 
+        
+        if (sbPanoramaViewer) {
+            sbPanoramaViewer.destroy();
+            sbPanoramaViewer = null;
+        }
+    });
+}
+
+// [3] 하단 타임라인 썸네일 렌더링
+function renderTimeline() {
+    timelineThumbnails.innerHTML = '';
+    
+    sceneHistory.forEach((scene, index) => {
+        const thumb = document.createElement('div');
+        thumb.className = `sb-thumbnail ${index === currentEditingSceneIndex ? 'active' : ''}`;
+        thumb.onclick = () => loadSceneToStoryboard(index);
+        
+        const imgSrc = scene.panoramaImgSrc || scene.imgSrc || '';
+        thumb.innerHTML = `
+            <img src="${imgSrc}" alt="Scene ${index + 1}">
+            <div class="sb-thumb-label">Scene ${index + 1}</div>
+        `;
+        timelineThumbnails.appendChild(thumb);
+    });
+}
+
+// [4] 특정 씬의 데이터를 화면에 로드
+function loadSceneToStoryboard(index) {
+    currentEditingSceneIndex = index;
+    const scene = sceneHistory[index];
+    
+    document.querySelectorAll('.sb-thumbnail').forEach((el, i) => {
+        el.classList.toggle('active', i === index);
+    });
+
+    sbSceneTitle.textContent = `Scene ${index + 1}`;
+    sbNarrative.value = scene.narrativeText || '';
+
+    sbKeywords.innerHTML = '';
+    const allKeywords = [...(scene.keyEmotions || []), ...(scene.atmosphere || []), ...(scene.keyElements || [])];
+    allKeywords.forEach(kw => {
+        const span = document.createElement('span');
+        span.className = 'keyword-tag atmosphere-tag';
+        span.textContent = kw;
+        sbKeywords.appendChild(span);
+    });
+
+    // 질의응답 로그 매칭
+    const relatedLog = interactionLog.find(log => log.type === 'question_answer' && log.narrative === scene.narrativeText);
+    if (relatedLog) {
+        sbQaLog.innerHTML = `
+            <p><strong>Q.</strong> ${relatedLog.question}</p>
+            <p style="margin-top: 8px; color:#5b6df5;"><strong>A.</strong> ${relatedLog.answer}</p>
+        `;
+    } else {
+        sbQaLog.innerHTML = '<p class="info-placeholder">이 씬에서 진행된 추가 질의응답이 없습니다.</p>';
+    }
+
+    // 파노라마 뷰어 렌더링
+    if (sbPanoramaViewer) sbPanoramaViewer.destroy();
+    
+    if (scene.panoramaImgSrc) {
+        sbPanoramaViewer = pannellum.viewer('storyboardViewer', {
+            "type": "equirectangular",
+            "panorama": scene.panoramaImgSrc,
+            "autoLoad": true,
+            "showControls": true
+        });
+    } else {
+        document.getElementById('storyboardViewer').innerHTML = '<div style="color:white; padding: 40px; text-align:center;">파노라마 이미지가 생성되지 않은 씬입니다.</div>';
+    }
+}
+
+// [5] 텍스트 수정 시 실시간 반영
+sbNarrative.addEventListener('input', (e) => {
+    if(sceneHistory[currentEditingSceneIndex]) {
+        sceneHistory[currentEditingSceneIndex].narrativeText = e.target.value;
+    }
+});

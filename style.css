@@ -677,3 +677,108 @@ main.container.show-right .right-sidebar {
 .mode-btn.active small {
     color: white;
 }
+
+/* ==========================================
+   스토리보드 (리뷰 및 편집)
+========================================== */
+.storyboard-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 80px); /* 헤더 제외 화면 꽉 채우기 */
+    gap: 16px;
+}
+
+.storyboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 16px 24px;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+}
+
+.storyboard-header h2 { font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+.storyboard-header p { font-size: 13px; color: #64748b; }
+
+.storyboard-top {
+    display: flex;
+    flex: 1; /* 남은 공간 모두 차지 */
+    gap: 16px;
+    min-height: 0; /* 중요: 자식 요소 스크롤을 위해 필요 */
+}
+
+.storyboard-main-viewer {
+    flex: 3; /* 패널보다 크게 */
+    background: #0f172a;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #e2e8f0;
+}
+
+.storyboard-side-panel {
+    flex: 1;
+    min-width: 300px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    overflow-y: auto;
+}
+
+.storyboard-side-panel h3 { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9; color: #5b6df5; }
+.sb-textarea { width: 100%; resize: vertical; }
+
+.sb-qa-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #334155;
+}
+
+/* 하단 썸네일 타임라인 */
+.storyboard-bottom-timeline {
+    height: 140px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+}
+
+.thumbnail-list {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+}
+
+.sb-thumbnail {
+    flex: 0 0 160px;
+    height: 90px;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    border: 3px solid transparent;
+    transition: all 0.2s;
+}
+
+.sb-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+.sb-thumbnail.active { border-color: #5b6df5; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(91,109,245,0.3); }
+
+.sb-thumb-label {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    font-size: 11px;
+    padding: 4px;
+    text-align: center;
+}
