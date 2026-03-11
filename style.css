@@ -56,17 +56,37 @@ header {
 .header-right { display: flex; gap: 12px; }
 .header-right.is-hidden { display: none !important; }
 
-.header-right button {
+/* 헤더 우측 레이아웃 */
+.header-right { display: flex; gap: 12px; }
+.header-right.is-hidden { display: none !important; }
+
+/* 💡 모든 공통 버튼의 기본 뼈대 (테두리 제거 및 둥근 모서리 보장) */
+.btn-secondary, .btn-primary {
+    border: none !important; /* 강제 테두리 제거 */
+    border-radius: 12px; /* 둥근 모서리 */
     padding: 8px 16px;
-    height: 36px;
-    border-radius: 18px;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    border: none;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
-.btn-secondary { background-color: #f0f0f0; color: #374151; }
-.btn-primary { background-color: #5b6df5; color: #fff; border: none;}
+
+/* 각각의 컬러 테마 */
+.btn-secondary { background-color: #f1f5f9; color: #475569; }
+.btn-secondary:hover { background-color: #e2e8f0; }
+
+.btn-primary { background-color: #5b6df5; color: #fff; }
+.btn-primary:hover { background-color: #4859e0; }
+
+/* 헤더 안의 버튼들만 특별히 적용할 스타일 (높이 맞춤) */
+.header-right button {
+    height: 38px;
+    border-radius: 19px; /* 헤더 버튼만 조금 더 동그랗게 */
+}
 
 /* ==========================================
    2. 메인 3단 고정 그리드 레이아웃
@@ -684,22 +704,10 @@ main.container.show-right .right-sidebar {
 .storyboard-container {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 80px); /* 헤더 제외 화면 꽉 채우기 */
-    gap: 16px;
+    height: calc(100vh - 60px); 
+    padding: 30px 40px 40px 40px;
+    gap: 20px;
 }
-
-.storyboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #fff;
-    padding: 16px 24px;
-    border-radius: 16px;
-    border: 1px solid #e2e8f0;
-}
-
-.storyboard-header h2 { font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
-.storyboard-header p { font-size: 13px; color: #64748b; }
 
 .storyboard-top {
     display: flex;
@@ -724,11 +732,24 @@ main.container.show-right .right-sidebar {
     border-radius: 16px;
     padding: 24px;
     border: 1px solid #e2e8f0;
-    overflow-y: auto;
+    
+    /* 패널 전체가 아닌 메모장 내부만 스크롤되도록 설정 */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important; 
 }
 
 .storyboard-side-panel h3 { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9; color: #5b6df5; }
-.sb-textarea { width: 100%; resize: vertical; }
+
+.sb-textarea { 
+    width: 100%; 
+    resize: none !important;
+}
+
+#sbNarrative {
+    min-height: 80px; 
+    resize: none !important;
+}
 
 .sb-qa-box {
     background: #f8fafc;
@@ -737,6 +758,13 @@ main.container.show-right .right-sidebar {
     border-radius: 8px;
     font-size: 13px;
     color: #334155;
+}
+
+#sbMemo {
+    flex: 1;
+    resize: none !important;
+    overflow-y: auto !important;
+    min-height: 80px;
 }
 
 /* 하단 썸네일 타임라인 */
@@ -781,4 +809,48 @@ main.container.show-right .right-sidebar {
     font-size: 11px;
     padding: 4px;
     text-align: center;
+}
+
+/* 뷰어 전환 토글 버튼 스타일 (평소엔 은은하게, 호버 시 강조) */
+.btn-view-toggle {
+    background: rgba(255, 255, 255, 0.85);
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-view-toggle:hover {
+    background: #5b6df5;
+    color: #ffffff;
+    border-color: #5b6df5;
+    box-shadow: 0 4px 12px rgba(91, 109, 245, 0.3);
+}
+
+/* 버튼 포커스 시 생기는 검은 아웃라인 제거 */
+button:focus, 
+#closeStoryboardBtn:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* 인터뷰 결과 목록 카드 (홈 화면용) */
+.interview-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+.interview-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }

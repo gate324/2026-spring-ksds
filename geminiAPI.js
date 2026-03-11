@@ -88,6 +88,166 @@ let currentVariationNumber = 1; // 현재 장면의 변형 번호
 let currentEditMode = 'remix'; // 'remix' 또는 'create'
 let interactionLog = []; // 인터뷰 인터랙션 로그
 
+// [기존에 있던 전역 변수 아래에 추가]
+let allInterviews = []; // 전체 인터뷰 목록 저장 배열
+let currentInterviewId = null; // 현재 진행중인 인터뷰 고유 ID
+let currentInterviewMeta = {}; // 현재 인터뷰 대상자 정보
+
+// 💡 새로운 인터뷰를 시작할 때 기존 데이터를 완전히 초기화하는 함수
+function resetGlobalState() {
+    sceneCommitted = false;
+    sceneHistory = [];
+    interactionLog = [];
+    currentNarrative = "";
+    currentPrompt = "";
+    currentKeyEmotions = [];
+    currentAtmosphere = [];
+    currentKeyElements = [];
+    currentPanoramaImgSrc = null;
+    currentSceneNumber = 1;
+    currentVariationNumber = 1;
+    currentSelectedQuestion = "";
+    
+    if (geminiImg) geminiImg.src = "";
+    if (narrativeTextEl) narrativeTextEl.innerHTML = "";
+    const ic = document.getElementById('imageCard');
+    if (ic) ic.classList.remove("has-image");
+    const hl = document.getElementById('historyList');
+    if (hl) hl.innerHTML = '<div class="history-empty" id="historyEmpty">아직 생성된 장면이 없습니다.</div>';
+    const aiql = document.getElementById('aiQuestionList');
+    if (aiql) aiql.innerHTML = '';
+    const aidqs = document.getElementById('aiDeepQuestionSection');
+    if (aidqs) aidqs.style.display = 'none';
+}
+
+// 💡 현재 인터뷰 진행 상황을 목록에 자동 저장하는 함수
+function saveCurrentInterviewState() {
+    if (!currentInterviewId) return;
+    
+    const existingIndex = allInterviews.findIndex(i => i.id === currentInterviewId);
+    const interviewData = {
+        id: currentInterviewId,
+        date: new Date().toLocaleDateString('ko-KR'),
+        meta: JSON.parse(JSON.stringify(currentInterviewMeta)),
+        sceneHistory: JSON.parse(JSON.stringify(sceneHistory)), 
+        interactionLog: [...interactionLog],
+        currentNarrative, currentPrompt, currentKeyEmotions, currentAtmosphere, currentKeyElements,
+        currentPanoramaImgSrc, currentSceneNumber, currentVariationNumber
+    };
+    
+    if (existingIndex >= 0) {
+        allInterviews[existingIndex] = interviewData;
+    } else {
+        allInterviews.push(interviewData);
+    }
+    renderHomeInterviewList(); // 홈 화면 업데이트
+}
+
+// 💡 홈 화면에 인터뷰 목록 썸네일 렌더링
+function renderHomeInterviewList() {
+    const historyContainer = document.querySelector('.home-section .history-list');
+    if (!historyContainer) return;
+    
+    if (allInterviews.length === 0) {
+        historyContainer.classList.add('home-empty');
+        historyContainer.innerHTML = `
+            <i class="fas fa-folder-open"></i>
+            <p>아직 저장된 인터뷰가 없습니다. 새 인터뷰를 생성해보세요.</p>
+        `;
+        return;
+    }
+    
+    historyContainer.classList.remove('home-empty');
+    historyContainer.innerHTML = '<div class="interview-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:20px; width:100%;"></div>';
+    const grid = historyContainer.querySelector('.interview-grid');
+    
+    // 최신 항목이 위에 오도록 역순 출력
+    allInterviews.slice().reverse().forEach(interview => {
+        const card = document.createElement('div');
+        card.className = 'interview-card';
+        
+        // Scene 1(첫 번째) 이미지를 썸네일로 사용
+        const thumbSrc = (interview.sceneHistory && interview.sceneHistory.length > 0 && interview.sceneHistory[0].imgSrc) ? interview.sceneHistory[0].imgSrc : '';
+        
+        card.innerHTML = `
+            <div style="height:160px; background:#f1f5f9; overflow:hidden;">
+                ${thumbSrc ? `<img src="${thumbSrc}" style="width:100%; height:100%; object-fit:cover;">` : '<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#94a3b8;"><i class="fas fa-image fa-2x"></i></div>'}
+            </div>
+            <div style="padding:16px;">
+                <div style="font-size:12px; color:#64748b; margin-bottom:4px;">${interview.date}</div>
+                <h3 style="font-size:16px; font-weight:700; color:#1e293b; margin-bottom:8px;">${interview.meta.topic || '주제 없음'}</h3>
+                <div style="font-size:13px; color:#475569;">${interview.meta.name || '응답자'} (${interview.meta.gender || '미상'}, ${interview.meta.age || '미상'})</div>
+            </div>
+        `;
+        
+        // 썸네일 박스 클릭 시 불러오기 및 스토리보드 진입
+        card.onclick = () => loadInterviewAndOpenStoryboard(interview.id);
+        grid.appendChild(card);
+    });
+}
+
+// 💡 홈에서 클릭 시 데이터를 복원하고 스토리보드 화면으로 즉시 들어가는 함수
+function loadInterviewAndOpenStoryboard(id) {
+    const interview = allInterviews.find(i => i.id === id);
+    if (!interview) return;
+    
+    // 전역 상태에 데이터 덮어쓰기
+    currentInterviewId = interview.id;
+    currentInterviewMeta = JSON.parse(JSON.stringify(interview.meta));
+    sceneHistory = JSON.parse(JSON.stringify(interview.sceneHistory));
+    interactionLog = JSON.parse(JSON.stringify(interview.interactionLog));
+    currentNarrative = interview.currentNarrative;
+    currentPrompt = interview.currentPrompt;
+    currentKeyEmotions = [...interview.currentKeyEmotions];
+    currentAtmosphere = [...interview.currentAtmosphere];
+    currentKeyElements = [...interview.currentKeyElements];
+    currentPanoramaImgSrc = interview.currentPanoramaImgSrc;
+    currentSceneNumber = interview.currentSceneNumber;
+    currentVariationNumber = interview.currentVariationNumber;
+    sceneCommitted = true;
+    
+    // 메인 화면 UI 정보 복원 (인터뷰로 돌아가기 했을 때를 대비)
+    document.getElementById("headerTopicDisplay").textContent = `| ${currentInterviewMeta.topic}`;
+    document.getElementById("profileNameDisplay").textContent = currentInterviewMeta.name;
+    document.getElementById("profileAgeDisplay").textContent = currentInterviewMeta.age;
+    document.getElementById("profileGenderDisplay").textContent = currentInterviewMeta.gender;
+    
+    if (narrativeTextEl) narrativeTextEl.innerHTML = currentNarrative;
+    if (geminiImg && sceneHistory.length > 0) {
+        geminiImg.src = sceneHistory[sceneHistory.length - 1].imgSrc; 
+        document.getElementById('imageCard').classList.add("has-image");
+    }
+    
+    displayKeywords();
+    renderHistorySidebar();
+    
+    // 홈 화면 끄고 스토리보드 열기
+    document.getElementById('homeSection').style.display = 'none';
+    document.getElementById('mainSection').style.display = 'none';
+    storyboardSection.style.display = 'flex';
+    
+    // 헤더 상태 업데이트
+    const openStoryboardBtn = document.getElementById('openStoryboardBtn');
+    if (openStoryboardBtn) openStoryboardBtn.innerHTML = '<i class="fas fa-save"></i> <span>저장하기</span>';
+    const headerRight = document.getElementById('headerRightArea');
+    if (headerRight) headerRight.classList.remove('is-hidden');
+    
+    // 스토리보드 렌더링
+    renderTimeline();
+    const startIndex = sceneHistory.length > 1 ? 1 : 0;
+    loadSceneToStoryboard(startIndex);
+}
+
+// 로고 클릭 시 홈 화면으로 이동
+document.getElementById('logoBtn')?.addEventListener('click', () => {
+    document.getElementById('mainSection').style.display = 'none';
+    document.getElementById('storyboardSection').style.display = 'none';
+    document.getElementById('homeSection').style.display = 'block';
+    document.getElementById('headerRightArea').classList.add('is-hidden'); 
+    document.getElementById('headerTopicDisplay').textContent = '';
+    renderHomeInterviewList();
+});
+
 // ============================================
 // 프롬프트 스타일 정의
 // ============================================
@@ -1475,13 +1635,21 @@ if (addQuestionBtn) {
 const startInterviewBtn = document.getElementById("startInterviewBtn");
 if (startInterviewBtn) {
     startInterviewBtn.addEventListener("click", async () => {
+        // 💡 새 인터뷰를 위한 기존 데이터 완전 초기화
+        resetGlobalState();
+
         // [1] 데이터 수집 및 UI 초기 세팅
         const topic = document.getElementById("prepTopic").value.trim() || "주제 미상";
         const name = document.getElementById("prepName").value.trim() || "응답자";
         const age = document.getElementById("prepAge").value.trim() || "미상";
         const gender = document.querySelector('input[name="prepGender"]:checked')?.value || "남성";
+        const prepNotes = document.getElementById("prepNotes")?.value.trim() || "";
         const questionInputs = document.querySelectorAll('.prep-question-input');
         const questions = Array.from(questionInputs).map(i => i.value.trim()).filter(v => v !== "");
+
+        // 💡 인터뷰 ID 및 정보 저장 (나중에 불러오기 위함)
+        currentInterviewId = Date.now();
+        currentInterviewMeta = { topic, name, age, gender, notes: prepNotes, prepQuestions: questions };
 
         // [2] 탭 열기 및 레이아웃 전환
         respondentWindow = window.open('respondent.html', 'respondentTab');
@@ -1623,35 +1791,83 @@ const sbQaLog = document.getElementById('sbQaLog');
 const sbKeywords = document.getElementById('sbKeywords');
 const sbSceneTitle = document.getElementById('sbSceneTitle');
 const closeStoryboardBtn = document.getElementById('closeStoryboardBtn');
-
-// 💡 HTML에 직접 추가한 버튼 가져오기 (동적 생성 코드 삭제됨)
 const openStoryboardBtn = document.getElementById('openStoryboardBtn');
 
+// 뷰어 및 토글 버튼 관련 변수
+const sbCartoonImg = document.getElementById('sbCartoonImg');
+const storyboardViewer = document.getElementById('storyboardViewer');
+const sbViewToggleBtn = document.getElementById('sbViewToggleBtn');
 let sbPanoramaViewer = null;
 let currentEditingSceneIndex = 0;
 
-// [1] 스토리보드 열기 (최종 단계 진입)
+// 💡 내러티브 텍스트 길이에 맞춰 창 높이를 자동으로 늘려주는 함수
+function autoResizeTextarea(el) {
+    el.style.height = 'auto'; // 높이 초기화
+    el.style.overflowY = 'hidden'; // 계산 중 스크롤바 숨김 (깜빡임 방지)
+    
+    // 우측 전체 패널(.storyboard-side-panel)의 실제 높이를 가져와 50% 계산
+    const sidePanel = el.closest('.storyboard-side-panel');
+    const maxAllowedHeight = sidePanel ? sidePanel.clientHeight * 0.5 : 300; 
+    
+    // 내용물이 50% 높이를 초과했는지 확인
+    if (el.scrollHeight > maxAllowedHeight) {
+        // 50%를 넘었을 때: 창 크기를 50%로 고정하고 내부에 스크롤바 생성
+        el.style.height = maxAllowedHeight + 'px';
+        el.style.overflowY = 'auto';
+    } else {
+        // 50% 이하일 때: 내용물 길이만큼만 창을 늘리고 스크롤바 숨김
+        el.style.height = el.scrollHeight + 'px';
+    }
+}
+
+// [1] 헤더 버튼 (스토리보드 진입 / 홈으로 저장 후 나가기) 로직
 if (openStoryboardBtn) {
     openStoryboardBtn.addEventListener('click', () => {
+        // 💡 1. 이미 스토리보드가 열려있는 경우 = [저장하기] 누름
+        if (storyboardSection.style.display === 'flex') {
+            saveCurrentInterviewState(); // 전체 데이터 저장 업데이트
+            
+            // 홈 화면으로 빠져나감
+            storyboardSection.style.display = 'none';
+            document.getElementById('homeSection').style.display = 'block';
+            document.getElementById('headerRightArea').classList.add('is-hidden');
+            document.getElementById('headerTopicDisplay').textContent = '';
+            openStoryboardBtn.innerHTML = '<i class="fas fa-film"></i> <span>스토리보드</span>'; 
+            
+            if (sbPanoramaViewer) {
+                sbPanoramaViewer.destroy();
+                sbPanoramaViewer = null;
+            }
+            return;
+        }
+
+        // 💡 2. 메인 화면에서 누른 경우 = [스토리보드] 진입
         if (sceneHistory.length === 0) {
             alert('아직 생성된 씬(Scene)이 없습니다. 인터뷰를 먼저 진행해주세요.');
             return;
         }
         
-        // 최종 정리 화면으로 전환
+        saveCurrentInterviewState(); // 진입 전 자동 저장
+        
         mainSection.style.display = 'none';
         storyboardSection.style.display = 'flex';
+        openStoryboardBtn.innerHTML = '<i class="fas fa-save"></i> <span>저장하기</span>'; 
         
         renderTimeline();
-        loadSceneToStoryboard(0); // 첫 번째 씬 로드
+        const startIndex = sceneHistory.length > 1 ? 1 : 0;
+        loadSceneToStoryboard(startIndex); 
     });
 }
 
-// [2] 인터뷰 화면으로 돌아가기 (선택 사항: 닫기 버튼을 누를 경우)
+// [2] 인터뷰 화면으로 돌아가기 (진행 상황 완벽 유지)
 if (closeStoryboardBtn) {
     closeStoryboardBtn.addEventListener('click', () => {
         storyboardSection.style.display = 'none';
-        mainSection.style.display = 'grid'; 
+        mainSection.style.display = 'grid'; // 메인 화면으로 전환
+        openStoryboardBtn.innerHTML = '<i class="fas fa-film"></i> <span>스토리보드</span>'; 
+        
+        // 💡 참고: 전역 변수(currentNarrative, sceneHistory 등)가 그대로 있으므로 
+        // 인터뷰 데이터와 화면 상태는 전혀 날아가지 않고 유지됩니다.
         
         if (sbPanoramaViewer) {
             sbPanoramaViewer.destroy();
@@ -1660,7 +1876,7 @@ if (closeStoryboardBtn) {
     });
 }
 
-// [3] 하단 타임라인 썸네일 렌더링
+// [3] 하단 타임라인 썸네일 렌더링 (카툰 이미지 기준)
 function renderTimeline() {
     timelineThumbnails.innerHTML = '';
     
@@ -1669,7 +1885,7 @@ function renderTimeline() {
         thumb.className = `sb-thumbnail ${index === currentEditingSceneIndex ? 'active' : ''}`;
         thumb.onclick = () => loadSceneToStoryboard(index);
         
-        const imgSrc = scene.panoramaImgSrc || scene.imgSrc || '';
+        const imgSrc = scene.imgSrc || ''; 
         thumb.innerHTML = `
             <img src="${imgSrc}" alt="Scene ${index + 1}">
             <div class="sb-thumb-label">Scene ${index + 1}</div>
@@ -1678,7 +1894,7 @@ function renderTimeline() {
     });
 }
 
-// [4] 특정 씬의 데이터를 화면에 로드
+// [4] 특정 씬 데이터 화면에 로드 (키워드 색상 유지 반영)
 function loadSceneToStoryboard(index) {
     currentEditingSceneIndex = index;
     const scene = sceneHistory[index];
@@ -1689,45 +1905,112 @@ function loadSceneToStoryboard(index) {
 
     sbSceneTitle.textContent = `Scene ${index + 1}`;
     sbNarrative.value = scene.narrativeText || '';
+    // 💡 씬을 불러온 직후 텍스트 길이에 맞춰 내러티브 창 높이 세팅
+    setTimeout(() => autoResizeTextarea(sbNarrative), 0);
 
+    if (sbMemo) {
+        sbMemo.value = scene.memo || '';
+    }
+
+    // 키워드를 카테고리별로 분리하여 각기 다른 색상의 태그 클래스 적용
     sbKeywords.innerHTML = '';
-    const allKeywords = [...(scene.keyEmotions || []), ...(scene.atmosphere || []), ...(scene.keyElements || [])];
-    allKeywords.forEach(kw => {
+    (scene.keyEmotions || []).forEach(kw => {
         const span = document.createElement('span');
-        span.className = 'keyword-tag atmosphere-tag';
+        span.className = 'keyword-tag emotion-tag'; // 빨간색
+        span.textContent = kw;
+        sbKeywords.appendChild(span);
+    });
+    (scene.atmosphere || []).forEach(kw => {
+        const span = document.createElement('span');
+        span.className = 'keyword-tag atmosphere-tag'; // 보라색
+        span.textContent = kw;
+        sbKeywords.appendChild(span);
+    });
+    (scene.keyElements || []).forEach(kw => {
+        const span = document.createElement('span');
+        span.className = 'keyword-tag element-tag'; // 파란색
         span.textContent = kw;
         sbKeywords.appendChild(span);
     });
 
-    // 질의응답 로그 매칭
+    // 질의응답 로그 텍스트 분기 처리
     const relatedLog = interactionLog.find(log => log.type === 'question_answer' && log.narrative === scene.narrativeText);
     if (relatedLog) {
         sbQaLog.innerHTML = `
-            <p><strong>Q.</strong> ${relatedLog.question}</p>
-            <p style="margin-top: 8px; color:#5b6df5;"><strong>A.</strong> ${relatedLog.answer}</p>
+            <p style="margin-bottom:8px; line-height:1.5;"><strong>Q.</strong> ${relatedLog.question}</p>
+            <p style="color:#5b6df5; line-height:1.5;"><strong>A.</strong> ${relatedLog.answer}</p>
         `;
     } else {
-        sbQaLog.innerHTML = '<p class="info-placeholder">이 씬에서 진행된 추가 질의응답이 없습니다.</p>';
+        sbQaLog.innerHTML = '<p class="info-placeholder">최초 생성된 장면입니다.</p>';
     }
 
-    // 파노라마 뷰어 렌더링
-    if (sbPanoramaViewer) sbPanoramaViewer.destroy();
-    
+    // 뷰어 초기화 (항상 카툰 이미지를 먼저 보여줌)
+    sbCartoonImg.src = scene.imgSrc || '';
+    sbCartoonImg.style.display = 'block';
+    storyboardViewer.style.display = 'none';
+    sbViewToggleBtn.innerHTML = '<i class="fas fa-street-view"></i> <span>파노라마 보기</span>';
+    sbViewToggleBtn.dataset.view = 'cartoon';
+
+    if (sbPanoramaViewer) {
+        sbPanoramaViewer.destroy();
+        sbPanoramaViewer = null;
+    }
+
+    // 파노라마 이미지가 있으면 토글 버튼 활성화, 없으면 숨김
     if (scene.panoramaImgSrc) {
-        sbPanoramaViewer = pannellum.viewer('storyboardViewer', {
-            "type": "equirectangular",
-            "panorama": scene.panoramaImgSrc,
-            "autoLoad": true,
-            "showControls": true
-        });
+        sbViewToggleBtn.style.display = 'flex';
     } else {
-        document.getElementById('storyboardViewer').innerHTML = '<div style="color:white; padding: 40px; text-align:center;">파노라마 이미지가 생성되지 않은 씬입니다.</div>';
+        sbViewToggleBtn.style.display = 'none';
     }
 }
 
-// [5] 텍스트 수정 시 실시간 반영
-sbNarrative.addEventListener('input', (e) => {
-    if(sceneHistory[currentEditingSceneIndex]) {
-        sceneHistory[currentEditingSceneIndex].narrativeText = e.target.value;
-    }
-});
+// [5] 뷰어 양방향 전환 토글 버튼 로직 ('일러스트 보기' 반영)
+if (sbViewToggleBtn) {
+    sbViewToggleBtn.addEventListener('click', () => {
+        const scene = sceneHistory[currentEditingSceneIndex];
+        
+        if (sbViewToggleBtn.dataset.view === 'cartoon') {
+            // 일러스트 -> 파노라마로 전환
+            sbCartoonImg.style.display = 'none';
+            storyboardViewer.style.display = 'block';
+            sbViewToggleBtn.innerHTML = '<i class="fas fa-image"></i> <span>일러스트 보기</span>';
+            sbViewToggleBtn.dataset.view = 'panorama';
+            
+            if (!sbPanoramaViewer && scene.panoramaImgSrc) {
+                sbPanoramaViewer = pannellum.viewer('storyboardViewer', {
+                    "type": "equirectangular",
+                    "panorama": scene.panoramaImgSrc,
+                    "autoLoad": true,
+                    "showControls": true
+                });
+            }
+        } else {
+            // 파노라마 -> 일러스트로 전환
+            sbCartoonImg.style.display = 'block';
+            storyboardViewer.style.display = 'none';
+            sbViewToggleBtn.innerHTML = '<i class="fas fa-street-view"></i> <span>파노라마 보기</span>';
+            sbViewToggleBtn.dataset.view = 'cartoon';
+        }
+    });
+}
+
+// [6] 텍스트 및 메모 수정 시 실시간 반영 로직 수정
+if (sbNarrative) {
+    sbNarrative.addEventListener('input', (e) => {
+        if(sceneHistory[currentEditingSceneIndex]) {
+            sceneHistory[currentEditingSceneIndex].narrativeText = e.target.value;
+        }
+        // 💡 타이핑 할 때마다 내러티브 창 높이가 자동으로 조절됨
+        autoResizeTextarea(e.target);
+    });
+}
+
+// 💡 메모 입력 이벤트 리스너 추가
+if (sbMemo) {
+    sbMemo.addEventListener('input', (e) => {
+        if(sceneHistory[currentEditingSceneIndex]) {
+            // 입력할 때마다 현재 씬 데이터의 'memo' 속성에 저장
+            sceneHistory[currentEditingSceneIndex].memo = e.target.value; 
+        }
+    });
+}
