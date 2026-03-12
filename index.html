@@ -196,6 +196,26 @@
                             </button>
                         </div>
 
+                        <aside class="right-sidebar" id="rightSidebar">
+                            <div class="sidebar-header">
+                                <h3>이미지 수정</h3>
+                                <button id="closeRightSidebarBtn" class="header-icon-btn"><i class="fas fa-times"></i></button>
+                            </div>
+                            
+                            <div class="sidebar-panel">
+                                <div class="panel-toggle">
+                                    <i class="fas fa-edit"></i>
+                                    <span>세부 수정 요청</span>
+                                </div>
+                                <div class="panel-content" style="max-height: 500px; padding: 8px 14px 14px; overflow: visible;">
+                                    <textarea id="remixInput" class="remix-textarea" placeholder="예: 주변에 나무를 더 추가해줘" rows="4"></textarea>
+                                </div>
+                            </div>
+
+                            <button id="remixSubmitBtn" class="btn-primary">
+                                <i class="fas fa-magic"></i></button>
+                        </aside>
+
                         <div class="narrative-overlay">
                             <p id="narrativeText"></p>
                         </div>
@@ -235,45 +255,11 @@
             </section>
         </section>
 
-        <aside class="right-sidebar" id="rightSidebar">
-            <div class="sidebar-header">
-                <h3>이미지 수정</h3>
-                <button id="closeRightSidebarBtn" class="header-icon-btn"><i class="fas fa-times"></i></button>
+        <aside class="history-sidebar" id="historySidebar">
+            <div class="group-header"><i class="fas fa-comments"></i> 인터뷰 기록</div>
+            <div id="historyLogList" class="history-log-list">
+                <p class="empty-msg">기록된 답변이 없습니다.</p>
             </div>
-            
-            <div class="sidebar-panel">
-                <div class="panel-toggle">
-                    <i class="fas fa-layer-group"></i>
-                    <span>모드 선택</span>
-                </div>
-                <div class="panel-content" style="padding: 14px;">
-                    <div class="mode-toggle-group">
-                        <button id="remixModeBtn" class="mode-btn active">
-                            <i class="fas fa-magic"></i>
-                            <span>Remix</span>
-                            <small>현재 이미지 수정</small>
-                        </button>
-                        <button id="createModeBtn" class="mode-btn">
-                            <i class="fas fa-plus-circle"></i>
-                            <span>Create</span>
-                            <small>새 장면 생성</small>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="sidebar-panel">
-                <div class="panel-toggle">
-                    <i class="fas fa-edit"></i>
-                    <span>세부 수정 요청</span>
-                </div>
-                <div class="panel-content" style="max-height: 500px; padding: 8px 14px 14px; overflow: visible;">
-                    <textarea id="remixInput" class="remix-textarea" placeholder="예: 주변에 나무를 더 추가해줘" rows="4"></textarea>
-                </div>
-            </div>
-
-            <button id="remixSubmitBtn" class="btn-primary">
-                <i class="fas fa-magic"></i></button>
         </aside>
 
         <div id="panoramaFullscreen" class="panorama-fullscreen" style="display: none;">

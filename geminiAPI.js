@@ -1384,14 +1384,15 @@ if (createModeBtn) {
 
 if (remixToggleBtn) {
     remixToggleBtn.addEventListener("click", () => {
-        mainContainer.classList.toggle('show-right');
-        remixToggleBtn.classList.toggle('active');
+        const rightSidebar = document.getElementById("rightSidebar");
+        rightSidebar.classList.add('active');
     });
 }
+
 if (closeRightSidebarBtn) {
     closeRightSidebarBtn.addEventListener("click", () => {
-        mainContainer.classList.remove('show-right');
-        if (remixToggleBtn) remixToggleBtn.classList.remove('active');
+        const rightSidebar = document.getElementById("rightSidebar");
+        rightSidebar.classList.remove('active');
     });
 }
 
@@ -1778,6 +1779,71 @@ function updatePanoramaBtnState(isReady) {
         expandBtn.style.cursor = "not-allowed";
         expandBtn.classList.remove("active");
     }
+}
+
+const historyLogList = document.getElementById("historyLogList");
+
+function handleQuestionClick(e) {
+    const questionText = e.target.textContent.trim();
+    if (!questionText) return;
+
+    currentSelectedQuestion = questionText;
+
+    document.querySelectorAll('.question-item').forEach(el => el.classList.remove('selected'));
+    e.target.classList.add('selected');
+
+    replyInput.placeholder = `"${questionText}" 질문에 대한 답변을 입력하세요`;
+    questionReplyArea.classList.remove("disabled");
+}
+
+replySubmitBtn.addEventListener("click", () => {
+    const answer = replyInput.value.trim();
+    
+    if (!currentSelectedQuestion || !answer) {
+        alert("질문을 선택하고 답변을 입력해주세요!");
+        return;
+    }
+
+    addChatBubble("question", currentSelectedQuestion);
+    addChatBubble("answer", answer);
+
+    replyInput.value = "";
+    currentSelectedQuestion = "";
+    replyInput.placeholder = "질문을 선택하세요";
+    
+    document.querySelectorAll('.question-item').forEach(el => el.classList.remove('selected'));
+    questionReplyArea.classList.add("disabled");
+});
+
+function addChatBubble(type, text) {
+    const emptyMsg = historyLogList.querySelector(".empty-msg");
+    if (emptyMsg) emptyMsg.remove();
+
+    const bubbleRow = document.createElement("div");
+    bubbleRow.classList.add("chat-row");
+
+    if (type === "question") {
+        bubbleRow.classList.add("chat-left"); 
+        bubbleRow.innerHTML = `
+            <div class="chat-bubble question">
+                ${text}
+            </div>
+        `;
+    } else if (type === "answer") {
+        bubbleRow.classList.add("chat-right");
+        bubbleRow.innerHTML = `
+            <div class="chat-bubble answer">
+                ${text}
+            </div>
+        `;
+    }
+
+    historyLogList.appendChild(bubbleRow);
+    
+    historyLogList.scrollTo({
+        top: historyLogList.scrollHeight,
+        behavior: 'smooth'
+    });
 }
 
 // ============================================
