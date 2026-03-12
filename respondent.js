@@ -75,18 +75,40 @@ window.addEventListener('message', function(event) {
         if (loadingOverlay) loadingOverlay.style.display = data.value ? 'flex' : 'none';
     }
 
-    // [중요] 통합 데이터 수신 (장면 전환 시 한 번에 업데이트)
+    // 통합 데이터 수신 (장면 전환 시 한 번에 업데이트)
     if (data.type === 'syncAll') {
-        updateInterviewUI(data.narrative, data.question, data.parameters);
+        const narrativeEl = document.getElementById('respondentNarrative');
+        const questionEl = document.getElementById('respondentQuestion');
+        
+        if (narrativeEl) narrativeEl.innerHTML = data.narrative || "상황을 분석하고 있습니다...";
+        if (questionEl) questionEl.innerHTML = data.question || "질문을 기다리는 중입니다...";
+
+        // 키워드 파라미터 업데이트 코드는 삭제됨
+
         if (data.panoramaSrc) {
             initPanorama(data.panoramaSrc);
         }
+        
+        // 카툰 이미지 표시 로직
+        const cartoonContainer = document.getElementById('respondentCartoonContainer');
+        const cartoonImg = document.getElementById('respondentCartoonImg');
+        
+        if (cartoonContainer && cartoonImg) {
+            if (data.cartoonSrc && !data.cartoonSrc.includes("Img.png")) { 
+                cartoonImg.src = data.cartoonSrc;
+                cartoonContainer.style.display = 'block';
+            } else {
+                cartoonContainer.style.display = 'none';
+            }
+        }
+        
         if (loadingOverlay) loadingOverlay.style.display = 'none';
     }
 
     // 기존 질문 동기화 유지
     if (data.type === 'syncQuestion') {
-        const questionText = document.getElementById('panoramaQuestionText');
+        // 💡 이전의 'panoramaQuestionText'에서 'respondentQuestion'으로 ID 수정
+        const questionText = document.getElementById('respondentQuestion');
         if (questionText) questionText.textContent = data.question;
     }
 });

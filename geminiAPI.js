@@ -17,19 +17,25 @@ const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 let respondentWindow = null; // 응답자 화면 윈도우 객체
 
-// 응답자 화면 탭에 파노라마 데이터 전송 (연동)
+// 응답자 화면 탭에 데이터 전송 (연동)
 function syncToRespondent(panoramaSrc) {
     if (respondentWindow && !respondentWindow.closed) {
         try {
             const tags = [...currentKeyEmotions, ...currentAtmosphere, ...currentKeyElements].map(t => `#${t}`);
-            const questionToDisplay = currentSelectedQuestion || "응답을 기다리고 있습니다...";
+            
+            // 💡 원래 쓰던 대기 멘트로 원복
+            const questionToDisplay = currentSelectedQuestion || "잠시만 기다려주세요. 질문을 준비하고 있습니다.";
+            
+            const cartoonImgEl = document.getElementById("geminiImg");
+            const cartoonSrc = cartoonImgEl ? cartoonImgEl.src : "";
             
             respondentWindow.postMessage({
                 type: 'syncAll',
                 narrative: currentNarrative,
                 question: questionToDisplay,
                 parameters: tags,
-                panoramaSrc: panoramaSrc
+                panoramaSrc: panoramaSrc,
+                cartoonSrc: cartoonSrc
             }, '*');
         } catch (e) {
             console.error("응답자 탭 동기화 실패:", e);
@@ -181,13 +187,13 @@ function renderHomeInterviewList() {
         `;
         
         // 썸네일 박스 클릭 시 불러오기 및 스토리보드 진입
-        card.onclick = () => loadInterviewAndOpenStoryboard(interview.id);
+        card.onclick = () => loadInterview(interview.id);
         grid.appendChild(card);
     });
 }
 
-// 💡 홈에서 클릭 시 데이터를 복원하고 스토리보드 화면으로 즉시 들어가는 함수
-function loadInterviewAndOpenStoryboard(id) {
+// 💡 홈에서 클릭 시 데이터를 복원하고 '질문자(메인) 화면'으로 들어가는 함수
+function loadInterview(id) {
     const interview = allInterviews.find(i => i.id === id);
     if (!interview) return;
     
@@ -196,17 +202,17 @@ function loadInterviewAndOpenStoryboard(id) {
     currentInterviewMeta = JSON.parse(JSON.stringify(interview.meta));
     sceneHistory = JSON.parse(JSON.stringify(interview.sceneHistory));
     interactionLog = JSON.parse(JSON.stringify(interview.interactionLog));
-    currentNarrative = interview.currentNarrative;
-    currentPrompt = interview.currentPrompt;
-    currentKeyEmotions = [...interview.currentKeyEmotions];
-    currentAtmosphere = [...interview.currentAtmosphere];
-    currentKeyElements = [...interview.currentKeyElements];
-    currentPanoramaImgSrc = interview.currentPanoramaImgSrc;
-    currentSceneNumber = interview.currentSceneNumber;
-    currentVariationNumber = interview.currentVariationNumber;
+    currentNarrative = interview.currentNarrative || "";
+    currentPrompt = interview.currentPrompt || "";
+    currentKeyEmotions = [...(interview.currentKeyEmotions || [])];
+    currentAtmosphere = [...(interview.currentAtmosphere || [])];
+    currentKeyElements = [...(interview.currentKeyElements || [])];
+    currentPanoramaImgSrc = interview.currentPanoramaImgSrc || null;
+    currentSceneNumber = interview.currentSceneNumber || 1;
+    currentVariationNumber = interview.currentVariationNumber || 1;
     sceneCommitted = true;
     
-    // 메인 화면 UI 정보 복원 (인터뷰로 돌아가기 했을 때를 대비)
+    // 메인 화면 UI 정보 복원
     document.getElementById("headerTopicDisplay").textContent = `| ${currentInterviewMeta.topic}`;
     document.getElementById("profileNameDisplay").textContent = currentInterviewMeta.name;
     document.getElementById("profileAgeDisplay").textContent = currentInterviewMeta.age;
@@ -221,21 +227,17 @@ function loadInterviewAndOpenStoryboard(id) {
     displayKeywords();
     renderHistorySidebar();
     
-    // 홈 화면 끄고 스토리보드 열기
+    // 💡 [핵심 수정] 홈 화면을 끄고 '메인 화면'만 켭니다. 스토리보드 모달은 숨김 유지!
     document.getElementById('homeSection').style.display = 'none';
-    document.getElementById('mainSection').style.display = 'none';
-    storyboardSection.style.display = 'flex';
+    document.getElementById('mainSection').style.display = 'grid'; 
+    storyboardSection.style.display = 'none';
     
-    // 헤더 상태 업데이트
+    // 헤더 상태 업데이트 (스토리보드 버튼 이름 초기화)
     const openStoryboardBtn = document.getElementById('openStoryboardBtn');
-    if (openStoryboardBtn) openStoryboardBtn.innerHTML = '<i class="fas fa-save"></i> <span>저장하기</span>';
+    if (openStoryboardBtn) openStoryboardBtn.innerHTML = '<i class="fas fa-film"></i> 스토리보드';
+    
     const headerRight = document.getElementById('headerRightArea');
     if (headerRight) headerRight.classList.remove('is-hidden');
-    
-    // 스토리보드 렌더링
-    renderTimeline();
-    const startIndex = sceneHistory.length > 1 ? 1 : 0;
-    loadSceneToStoryboard(startIndex);
 }
 
 // 로고 클릭 시 홈 화면으로 이동
@@ -1886,38 +1888,21 @@ function autoResizeTextarea(el) {
     }
 }
 
-// [1] 헤더 버튼 (스토리보드 진입 / 홈으로 저장 후 나가기) 로직
+// 스토리보드 뷰어 및 버튼 변수
+const saveInterviewBtn = document.getElementById('saveInterviewBtn'); // 추가된 저장 버튼
+
+// [1] 스토리보드 열기 (모달로 띄움)
 if (openStoryboardBtn) {
     openStoryboardBtn.addEventListener('click', () => {
-        // 💡 1. 이미 스토리보드가 열려있는 경우 = [저장하기] 누름
-        if (storyboardSection.style.display === 'flex') {
-            saveCurrentInterviewState(); // 전체 데이터 저장 업데이트
-            
-            // 홈 화면으로 빠져나감
-            storyboardSection.style.display = 'none';
-            document.getElementById('homeSection').style.display = 'block';
-            document.getElementById('headerRightArea').classList.add('is-hidden');
-            document.getElementById('headerTopicDisplay').textContent = '';
-            openStoryboardBtn.innerHTML = '<i class="fas fa-film"></i> <span>스토리보드</span>'; 
-            
-            if (sbPanoramaViewer) {
-                sbPanoramaViewer.destroy();
-                sbPanoramaViewer = null;
-            }
-            return;
-        }
-
-        // 💡 2. 메인 화면에서 누른 경우 = [스토리보드] 진입
         if (sceneHistory.length === 0) {
-            alert('아직 생성된 씬(Scene)이 없습니다. 인터뷰를 먼저 진행해주세요.');
+            alert('아직 생성된 씬(Scene)이 없습니다.');
             return;
         }
         
-        saveCurrentInterviewState(); // 진입 전 자동 저장
+        saveCurrentInterviewState(); // 열기 전 최신 상태 자동 저장
         
-        mainSection.style.display = 'none';
+        // 메인 화면을 숨기지 않고 모달만 띄움
         storyboardSection.style.display = 'flex';
-        openStoryboardBtn.innerHTML = '<i class="fas fa-save"></i> <span>저장하기</span>'; 
         
         renderTimeline();
         const startIndex = sceneHistory.length > 1 ? 1 : 0;
@@ -1925,15 +1910,32 @@ if (openStoryboardBtn) {
     });
 }
 
-// [2] 인터뷰 화면으로 돌아가기 (진행 상황 완벽 유지)
+// [2] 스토리보드 닫기 (모달 끄기)
 if (closeStoryboardBtn) {
     closeStoryboardBtn.addEventListener('click', () => {
-        storyboardSection.style.display = 'none';
-        mainSection.style.display = 'grid'; // 메인 화면으로 전환
-        openStoryboardBtn.innerHTML = '<i class="fas fa-film"></i> <span>스토리보드</span>'; 
+        storyboardSection.style.display = 'none'; // 모달 닫기
         
-        // 💡 참고: 전역 변수(currentNarrative, sceneHistory 등)가 그대로 있으므로 
-        // 인터뷰 데이터와 화면 상태는 전혀 날아가지 않고 유지됩니다.
+        // 💡 [핵심 수정 2] 모달이 닫히면 무조건 메인 인터뷰 화면이 나타나도록 보장
+        document.getElementById('mainSection').style.display = 'grid'; 
+        
+        if (sbPanoramaViewer) {
+            sbPanoramaViewer.destroy();
+            sbPanoramaViewer = null;
+        }
+    });
+}
+
+// [3] 새로운 '저장하기' 버튼 (목록으로 돌아가기)
+if (saveInterviewBtn) {
+    saveInterviewBtn.addEventListener('click', () => {
+        saveCurrentInterviewState(); // 진행상황 완전 저장
+        
+        // 홈 화면으로 빠져나감
+        storyboardSection.style.display = 'none';
+        document.getElementById('mainSection').style.display = 'none';
+        document.getElementById('homeSection').style.display = 'block';
+        document.getElementById('headerRightArea').classList.add('is-hidden');
+        document.getElementById('headerTopicDisplay').textContent = '';
         
         if (sbPanoramaViewer) {
             sbPanoramaViewer.destroy();

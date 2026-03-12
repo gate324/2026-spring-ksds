@@ -106,13 +106,16 @@
     transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
 }
 
-/* 4. 마우스 호버 시: 글씨 밝아지고, 내용 스르륵 펼쳐짐 */
-.expandable-section:hover .section-header {
-    color: #ffffff; /* 메뉴 이름이 하얗게 강조됨 */
+/* ==========================================
+   항상 펼쳐져 있는 섹션 전용 스타일 (내러티브 박스)
+========================================== */
+.expandable-section.always-open .section-header {
+    color: #ffffff;
 }
 
-.expandable-section:hover .section-content {
-    max-height: 200px; /* 내용이 펼쳐질 충분한 높이 */
+.expandable-section.always-open .section-content {
+    max-height: none !important; /* 💡 높이 제한 해제 (내용물만큼 다 늘어남) */
+    overflow: visible !important; /* 💡 내부 스크롤 없애고 다 보이게 */
     opacity: 1;
     margin-top: 4px;
     margin-bottom: 12px;
@@ -171,4 +174,27 @@
 /* 로딩 레이어 표시 제어 */
 .image-loading {
     display: none; /* 기본 숨김 */
+}
+
+/* 우측 상단 카툰 일러스트 오버레이 스타일 */
+.respondent-cartoon-overlay {
+    opacity: 1 !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 마우스를 올리면 이미지가 살짝 커지며 강조되는 효과 */
+.respondent-cartoon-overlay:hover {
+    transform: scale(1.05) translateY(-2px);
+    z-index: 20;
+}
+
+/* 하단 질문 영역 넓은 범위 호버 반응 */
+.hover-target:hover .section-content {
+    max-height: 400px;
+    opacity: 1;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+.hover-target:hover .toggle-icon {
+    transform: rotate(180deg);
 }
