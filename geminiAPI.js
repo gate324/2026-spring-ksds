@@ -124,6 +124,9 @@ function resetGlobalState() {
     if (aiql) aiql.innerHTML = '';
     const aidqs = document.getElementById('aiDeepQuestionSection');
     if (aidqs) aidqs.style.display = 'none';
+
+    const hll = document.getElementById('historyLogList');
+    if (hll) hll.innerHTML = '<p class="empty-msg">기록된 답변이 없습니다.</p>';
 }
 
 // 💡 현재 인터뷰 진행 상황을 목록에 자동 저장하는 함수
