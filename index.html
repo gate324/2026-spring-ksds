@@ -16,12 +16,11 @@
 <body>
     <header id="mainHeader">
         <div class="header-left">
-            <div class="logo" id="logoBtn" style="cursor: pointer;" title="홈으로 이동">서비스이름</div>
+            <div class="logo" id="logoBtn" style="cursor: pointer;" title="홈으로 이동">ContextCanvas</div>
             <span id="headerTopicDisplay"></span>
         </div>
         <div class="header-right is-hidden" id="headerRightArea">
             <button class="btn-secondary" id="nextStepBtn"><i class="fas fa-file-export"></i> 내보내기</button>
-            <button class="btn-secondary" id="openStoryboardBtn"><i class="fas fa-film"></i> 스토리보드</button>
             <button class="btn-primary" id="saveInterviewBtn"><i class="fas fa-save"></i> 저장하기</button>
         </div>
     </header>
@@ -44,7 +43,7 @@
             <div class="form-header modal-header">
                 <div>
                     <h2>새 인터뷰 준비</h2>
-                    <p>주제와 대상자 정보, 사전 질문을 입력하세요.</p>
+                    <p>주제와 대상자 정보, 인터뷰 목표를 입력하세요.</p>
                 </div>
                 <button id="closePrepModalBtn" class="modal-close-btn"><i class="fas fa-times"></i></button>
             </div>
@@ -84,13 +83,10 @@
 
                 <div class="form-section no-border">
                     <div class="demo-field">
-                        <label>사전 준비 질문</label>
+                        <label>인터뷰 목표</label>
                         <div id="dynamicQuestionContainer" class="dynamic-question-container">
-                            <input type="text" class="prep-question-input inline-textarea" placeholder="질문을 입력하세요">
+                            <textarea id="prepGoal" class="inline-textarea" rows="3" placeholder="예: 사용자가 무인 기기를 처음 마주했을 때의 감정과 포기하게 되는 결정적 이유 파악"></textarea>
                         </div>
-                        <button id="addQuestionBtn" type="button" class="add-question-btn">
-                            <i class="fas fa-plus"></i> 질문 추가하기
-                        </button>
                     </div>
                 </div>
             </div>
@@ -108,8 +104,6 @@
             <div class="user-profile-card" id="userProfileCard">
                 <div class="profile-avatar">
                     <img src="profile.jpg" alt="프로필">
-                    <div class="avatar-placeholder">
-                    </div>
                 </div>
                 <div class="profile-info">
                     <h3 class="profile-name" id="profileNameDisplay"></h3>
@@ -143,21 +137,15 @@
                     <div class="keywords-list">
                         <div class="keyword-section">
                             <span class="keyword-section-label">감정</span>
-                            <div class="keyword-tags" id="emotionTags">
-                                <p class="info-placeholder">장면을 생성하면 감정 키워드가 표시됩니다.</p>
-                            </div>
+                            <div class="keyword-tags" id="emotionTags"></div>
                         </div>
                         <div class="keyword-section">
                             <span class="keyword-section-label">분위기</span>
-                            <div class="keyword-tags" id="atmosphereTags">
-                                <p class="info-placeholder">장면을 생성하면 분위기 키워드가 표시됩니다.</p>
-                            </div>
+                            <div class="keyword-tags" id="atmosphereTags"></div>
                         </div>
                         <div class="keyword-section">
                             <span class="keyword-section-label">요소</span>
-                            <div class="keyword-tags" id="elementTags">
-                                <p class="info-placeholder">장면을 생성하면 요소 키워드가 표시됩니다.</p>
-                            </div>
+                            <div class="keyword-tags" id="elementTags"></div>
                         </div>
                     </div>
                 </div>
@@ -181,11 +169,9 @@
 
         <section class="visual-section">
             <div class="image-card" id="imageCard">
-
                 <div class="image-shell image-shell-visual">
                     <div class="image-wrapper">
                         <img id="geminiImg" alt="Generated Scene">
-                        
                         <div class="image-overlays">
                             <button id="expandBtn" class="overlay-btn expanding-btn" title="360° 파노라마 보기">
                                 <i class="fas fa-street-view"></i>
@@ -196,13 +182,11 @@
                                 <span class="btn-text">이미지 수정하기</span>
                             </button>
                         </div>
-
                         <aside class="right-sidebar" id="rightSidebar">
                             <div class="sidebar-header">
                                 <h3>이미지 수정</h3>
                                 <button id="closeRightSidebarBtn" class="header-icon-btn"><i class="fas fa-times"></i></button>
                             </div>
-                            
                             <div class="sidebar-panel">
                                 <div class="panel-toggle">
                                     <i class="fas fa-edit"></i>
@@ -212,42 +196,31 @@
                                     <textarea id="remixInput" class="remix-textarea" placeholder="예: 주변에 나무를 더 추가해줘" rows="4"></textarea>
                                 </div>
                             </div>
-
-                            <button id="remixSubmitBtn" class="btn-primary">
-                                <i class="fas fa-magic"></i></button>
+                            <button id="remixSubmitBtn" class="btn-primary"><i class="fas fa-magic"></i></button>
                         </aside>
-
                         <div class="narrative-overlay">
                             <p id="narrativeText"></p>
                         </div>
                     </div>
                 </div>
-
                 <div class="image-loading" id="imageLoading">
                     <div class="spinner"></div>
                     <span>장면을 그리는 중이에요…</span>
                 </div>
-
                 <input type="file" id="imgInput" accept="image/*" hidden />
             </div>
 
             <section class="unified-question-section">
                 <div class="question-group">
-                    <div class="group-header"><i class="fas fa-list-ul"></i> 사전 준비 질문</div>
-                    <div id="prepQuestionList" class="horizontal-scroll-list">
-                        </div>
-                </div>
-                <div class="question-group">
-                    <div id="aiDeepQuestionSection" class="question-group" style="display: none;">
-                        <div class="group-header"><i class="fas fa-lightbulb"></i> AI 심층 질문</div>
-                        <div id="aiQuestionList" class="question-list">
-                            </div>
+                    <div class="group-header"><i class="fas fa-bullseye"></i> AI 인터뷰 질문</div>
+                    <div id="currentAiQuestionDisplay" class="current-question-display">
+                        인터뷰를 시작하면 목표 달성을 위한 첫 번째 질문이 여기에 표시됩니다.
                     </div>
                 </div>
 
                 <div id="questionReplyArea" class="reply-area disabled">
                     <div class="reply-wrapper">
-                        <textarea id="replyInput" placeholder="질문을 선택한 후 답변을 입력해주세요."></textarea>
+                        <textarea id="replyInput" placeholder="응답자의 답변을 입력해주세요."></textarea>
                         <button id="replySubmitBtn" class="submit-btn">
                             <i class="fas fa-paper-plane"></i> <span>답변하기</span>
                         </button>
@@ -266,14 +239,12 @@
         <div id="panoramaFullscreen" class="panorama-fullscreen" style="display: none;">
             <div class="panorama-container">
                 <button id="closeFullscreenBtn" class="close-fullscreen-btn" title="축소"><i class="fas fa-compress"></i></button>
-                
                 <div class="panorama-text-overlay" id="panoramaTextOverlay">
                     <div class="overlay-glass">
                         <h4>현재 상황</h4>
                         <p id="panoramaNarrativeText"></p>
                     </div>
                 </div>
-
                 <div id="panoramaViewer"></div>
                 <div class="panorama-loading" id="panoramaLoading">
                     <div class="spinner"></div>
@@ -286,56 +257,6 @@
         <button id="geminiBtn" class="hidden-btn"></button>
         <button id="SaveImg" class="hidden-btn">Save</button>
     </main>
-
-    <section id="storyboardSection" class="storyboard-modal-overlay" style="display: none;">
-        <div class="storyboard-modal-content">
-            <div class="storyboard-top">
-                <div class="storyboard-main-viewer" style="position: relative;">
-                    <img id="sbCartoonImg" src="" alt="Cartoon Scene" style="width: 100%; height: 100%; object-fit: contain; background: #000; border-radius: 12px;">
-                    <div id="storyboardViewer" style="width: 100%; height: 100%; display: none; border-radius: 12px; overflow: hidden;"></div>
-                    
-                    <button id="sbViewToggleBtn" class="btn-view-toggle" style="position: absolute; top: 16px; right: 16px; z-index: 10; display: none; padding: 8px 16px; border-radius: 20px;">
-                        <i class="fas fa-street-view"></i> <span>파노라마 보기</span>
-                    </button>
-                </div>
-
-                <aside class="storyboard-side-panel">
-                    <div class="sb-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9;">
-                        <h3 id="sbSceneTitle" style="margin: 0; padding: 0; border: none; color: #5b6df5;">Scene 01</h3>
-                        <button id="closeStoryboardBtn" class="btn-secondary" style="font-size: 13px; padding: 6px 14px;">
-                            <i class="fas fa-times"></i> 닫기
-                        </button>
-                    </div>
-                    
-                    <div class="panel-field" style="margin-bottom: 16px;">
-                        <label>상황 내러티브</label>
-                        <textarea id="sbNarrative" class="sb-textarea inline-textarea" rows="6"></textarea>
-                    </div>
-                    
-                    <div class="panel-field" id="sbLogArea">
-                        <label>당시 진행된 질의응답</label>
-                        <div id="sbQaLog" class="sb-qa-box" style="margin-top: 8px;">
-                            <p class="info-placeholder">최초 생성된 장면입니다.</p>
-                        </div>
-                    </div>
-
-                    <div class="panel-field" style="margin-top: 16px;">
-                        <label>추출된 키워드</label>
-                        <div id="sbKeywords" class="keyword-tags" style="margin-top: 8px;"></div>
-                    </div>
-
-                    <div class="panel-field" style="margin-top: 16px; flex: 1; display: flex; flex-direction: column;">
-                        <label>메모</label>
-                        <textarea id="sbMemo" class="sb-textarea inline-textarea" placeholder="이 장면에 대한 메모를 자유롭게 남겨보세요." style="flex: 1; min-height: 80px; margin-top: 8px; background: #f8fafc; border: 1px dashed #cbd5e1;"></textarea>
-                    </div>
-                </aside>
-            </div>
-
-            <div class="storyboard-bottom-timeline">
-                <div id="timelineThumbnails" class="thumbnail-list"></div>
-            </div>
-        </div>
-    </section>
 
     <script type="module" src="geminiAPI.js"></script>
 </body>

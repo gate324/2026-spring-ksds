@@ -7,7 +7,10 @@ function initPanorama(imageUrl) {
         "panorama": imageUrl,
         "autoLoad": true,
         "showControls": false,
-        "compass": false
+        "compass": false,
+        "autoRotate": -2, // 음수는 시계방향으로 천천히 회전 (숫자가 클수록 빠름)
+        "mouseZoom": false, // 화면공유 중 조작 방지를 위해 줌 비활성화
+        "keyboardZoom": false
     });
 }
 
