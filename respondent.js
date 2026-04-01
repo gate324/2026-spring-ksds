@@ -1,4 +1,49 @@
 let viewer;
+const AUTO_ROTATE_SPEED = -2;
+let isAutoRotateEnabled = true;
+
+function updateRotationButtons() {
+    const playBtn = document.getElementById('rotationPlayBtn');
+    const stopBtn = document.getElementById('rotationStopBtn');
+
+    if (!playBtn || !stopBtn) return;
+
+    playBtn.classList.toggle('is-active', isAutoRotateEnabled);
+    stopBtn.classList.toggle('is-active', !isAutoRotateEnabled);
+    playBtn.setAttribute('aria-pressed', String(isAutoRotateEnabled));
+    stopBtn.setAttribute('aria-pressed', String(!isAutoRotateEnabled));
+}
+
+function setAutoRotate(enabled) {
+    isAutoRotateEnabled = enabled;
+
+    if (viewer) {
+        if (enabled && typeof viewer.startAutoRotate === 'function') {
+            viewer.startAutoRotate(AUTO_ROTATE_SPEED);
+        }
+
+        if (!enabled && typeof viewer.stopAutoRotate === 'function') {
+            viewer.stopAutoRotate();
+        }
+    }
+
+    updateRotationButtons();
+}
+
+function bindRotationControls() {
+    const playBtn = document.getElementById('rotationPlayBtn');
+    const stopBtn = document.getElementById('rotationStopBtn');
+
+    if (playBtn) {
+        playBtn.addEventListener('click', () => setAutoRotate(true));
+    }
+
+    if (stopBtn) {
+        stopBtn.addEventListener('click', () => setAutoRotate(false));
+    }
+
+    updateRotationButtons();
+}
 
 function initPanorama(imageUrl) {
     if (viewer) viewer.destroy();
@@ -8,7 +53,7 @@ function initPanorama(imageUrl) {
         "autoLoad": true,
         "showControls": false,
         "compass": false,
-        "autoRotate": -2, // 음수는 시계방향으로 천천히 회전 (숫자가 클수록 빠름)
+        "autoRotate": isAutoRotateEnabled ? AUTO_ROTATE_SPEED : false,
         "mouseZoom": false, // 화면공유 중 조작 방지를 위해 줌 비활성화
         "keyboardZoom": false
     });
@@ -67,6 +112,7 @@ window.addEventListener('touchstart', showUI);
 
 // 처음 화면이 로드되었을 때 UI를 한 번 보여줌
 setTimeout(showUI, 500);
+bindRotationControls();
 
 // 기존 코드 하단에 추가
 window.addEventListener('message', function(event) {

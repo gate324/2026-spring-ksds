@@ -47,6 +47,17 @@
             </div>
         </div>
 
+        <div class="respondent-rotation-controls" aria-label="카메라 자동 회전 제어">
+            <button id="rotationPlayBtn" type="button" class="rotation-btn is-active" aria-pressed="true">
+                <i class="fas fa-play"></i>
+                <span>재생</span>
+            </button>
+            <button id="rotationStopBtn" type="button" class="rotation-btn" aria-pressed="false">
+                <i class="fas fa-stop"></i>
+                <span>정지</span>
+            </button>
+        </div>
+
         <div id="panoramaViewer" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1;"></div>
     </div>
     <script src="respondent.js"></script>
