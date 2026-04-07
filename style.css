@@ -272,12 +272,24 @@ main.container.show-right .right-sidebar {
 .group-header { font-size: 14px; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 12px; }
 .group-header i { color: #5b6df5; font-size: 16px; }
 
-.current-question-display {
+.question-options-container {
     background: #f8f9ff; border: 1px solid #5b6df5; border-radius: 14px;
-    padding: 20px; font-size: 16px; font-weight: 700; color: #1e293b;
-    line-height: 1.6; word-break: keep-all; margin-bottom: 0px; 
-    box-shadow: 0 4px 12px rgba(91, 109, 245, 0.05);
+    padding: 20px; font-size: 15px; color: #1e293b;
+    box-shadow: 0 4px 12px rgba(91, 109, 245, 0.05); margin-bottom: 0px;
 }
+
+.ai-question-item { margin-bottom: 12px; display: flex; align-items: flex-start; gap: 8px; }
+.ai-question-item input[type="radio"] { margin-top: 4px; cursor: pointer; }
+.ai-question-item label { cursor: pointer; line-height: 1.5; font-weight: 600; }
+
+.custom-question-box {
+    display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px dashed #c7d2fe;
+}
+.custom-question-box label { font-weight: 600; white-space: nowrap; cursor: pointer; }
+.custom-question-box input[type="text"] {
+    flex: 1; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;
+}
+.custom-question-box input[type="text"]:focus { border-color: #5b6df5; }
 
 .reply-area { margin-top: 8px; transition: all 0.3s ease; }
 .reply-area.disabled { opacity: 0.4; pointer-events: none; filter: grayscale(100%); }
@@ -371,6 +383,31 @@ main.container.show-right .right-sidebar {
 .emotion-tag { background: #fef3f2; color: #b91c1c; border: 1px solid #fecaca; }
 .atmosphere-tag { background: #faf5ff; color: #7c3aed; border: 1px solid #e9d5ff; }
 .element-tag { background: #f0f9ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+/* ==========================================
+   키워드 패널 스타일 (여백 조정)
+========================================== */
+.keyword-section {
+    margin-bottom: 24px; /* 각 카테고리(감정/분위기/요소) 사이의 넉넉한 간격 추가 */
+}
+
+.keyword-section:last-child {
+    margin-bottom: 0; /* 마지막 카테고리는 하단 여백 제거 */
+}
+
+.keyword-section-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 8px; /* 타이틀과 아래 태그들 사이의 간격 */
+}
+
+.keyword-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
 
 /* ==========================================
    9. 우측 패널 내부 (리믹스 폼)

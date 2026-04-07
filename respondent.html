@@ -17,13 +17,14 @@
             <div class="spinner"></div>
             <span style="font-size: 13px; color: #4b5563;">장면을 그리는 중이에요…</span>
         </div>
+        
         <div class="panorama-info-overlay expandable-section always-open" style="position: absolute; top: 24px; left: 24px; width: 340px; z-index: 1000;">
             <div class="overlay-glass">
                 <div class="section-header">
                     <h4><i class="fas fa-info-circle"></i> 현재 상황</h4>
                 </div>
                 <div class="section-content" style="padding-top: 8px;">
-                    <div style="border-radius: 8px; overflow: hidden; margin-bottom: 12px; display: none;" id="respondentCartoonContainer">
+                    <div style="border-radius: 8px; overflow: hidden; margin-bottom: 12px; display: block;" id="respondentCartoonContainer">
                         <img id="respondentCartoonImg" src="" alt="상황 일러스트" style="width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block;">
                     </div>
                     <p id="respondentNarrative" style="font-size: 14px; line-height: 1.6; margin: 0;">상황 내러티브가 여기에 표시됩니다.</p>
@@ -31,13 +32,12 @@
             </div>
         </div>
 
-        <div class="panorama-info-overlay expandable-section hover-target" style="position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 800px; z-index: 1000;">
-            <div class="overlay-glass" style="text-align: center;">  
+        <div class="panorama-info-overlay expandable-section always-open" style="position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 800px; z-index: 1000;">
+            <div class="overlay-glass question-glass" style="text-align: center;">  
                 <div class="section-header" style="position: relative; justify-content: center;">
                     <h3 style="margin: 0; font-size: 18px; color: #f8fafc;">
                         <i class="fas fa-comment-dots" style="margin-right: 6px;"></i>인터뷰 질문
                     </h3>
-                    <i class="fas fa-chevron-up toggle-icon" style="position: absolute; right: 10px; margin: 0;"></i>
                 </div>
                 <div class="section-content">
                     <p id="respondentQuestion" style="font-size: 22px; font-weight: 700; line-height: 1.5; margin: 10px 0 0 0; color: #fff; text-align: center; word-break: keep-all;">

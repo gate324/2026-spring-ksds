@@ -27,7 +27,7 @@ function syncToRespondent(panoramaSrc) {
             
             respondentWindow.postMessage({
                 type: 'syncAll',
-                narrative: currentNarrative,
+                narrative: initialNarrative || currentNarrative,
                 question: questionToDisplay,
                 parameters: tags,
                 panoramaSrc: panoramaSrc,
@@ -68,6 +68,7 @@ const historyEmptyEl = document.getElementById("historyEmpty");
 let sceneCommitted = false;
 let sceneHistory = [];
 let isRestoring = false;
+let initialNarrative = ""; 
 let currentNarrative = "";
 let currentPrompt = "";
 let currentKeyEmotions = [];
@@ -90,6 +91,7 @@ function resetGlobalState() {
     sceneCommitted = false;
     sceneHistory = [];
     interactionLog = [];
+    initialNarrative = "";
     currentNarrative = "";
     currentPrompt = "";
     currentKeyEmotions = [];
@@ -108,8 +110,10 @@ function resetGlobalState() {
     const hl = document.getElementById('historyList');
     if (hl) hl.innerHTML = '<div class="history-empty" id="historyEmpty">아직 생성된 장면이 없습니다.</div>';
     
-    const questionDisplayEl = document.getElementById('currentAiQuestionDisplay');
-    if (questionDisplayEl) questionDisplayEl.innerHTML = '인터뷰를 시작하면 목표 달성을 위한 첫 번째 질문이 여기에 표시됩니다.';
+    const listEl = document.getElementById('aiQuestionsList');
+    if (listEl) listEl.innerHTML = '<p class="placeholder">인터뷰를 시작하면 AI가 추천하는 질문들이 여기에 표시됩니다.</p>';
+    const sendBtn = document.getElementById('sendQuestionBtn');
+    if (sendBtn) sendBtn.disabled = true;
 
     const hll = document.getElementById('historyLogList');
     if (hll) hll.innerHTML = '<p class="empty-msg">기록된 답변이 없습니다.</p>';
@@ -125,7 +129,7 @@ function saveCurrentInterviewState() {
         meta: JSON.parse(JSON.stringify(currentInterviewMeta)),
         sceneHistory: JSON.parse(JSON.stringify(sceneHistory)), 
         interactionLog: [...interactionLog],
-        currentNarrative, currentPrompt, currentKeyEmotions, currentAtmosphere, currentKeyElements,
+        initialNarrative, currentNarrative, currentPrompt, currentKeyEmotions, currentAtmosphere, currentKeyElements,
         currentPanoramaImgSrc, currentSceneNumber, currentVariationNumber,
         currentInterviewGoal
     };
@@ -184,6 +188,7 @@ function loadInterview(id) {
     currentInterviewMeta = JSON.parse(JSON.stringify(interview.meta));
     sceneHistory = JSON.parse(JSON.stringify(interview.sceneHistory));
     interactionLog = JSON.parse(JSON.stringify(interview.interactionLog));
+    initialNarrative = interview.initialNarrative || interview.currentNarrative || "";
     currentNarrative = interview.currentNarrative || "";
     currentPrompt = interview.currentPrompt || "";
     currentKeyEmotions = [...(interview.currentKeyEmotions || [])];
@@ -310,9 +315,9 @@ ${currentInterviewGoal ? `## 인터뷰 목표\n${currentInterviewGoal}` : ""}
 
 # OUTPUT DIRECTIVES
 1. narrative (string): 5-8문장으로 구성된 자연스러운 스토리 (1인칭 시점)
-2. key_emotions: 반드시 3-5개의 구체적인 감정 키워드
-3. atmosphere: 반드시 3-5개의 분위기 키워드
-4. key_elements: 반드시 3-5개의 시각적/맥락적 요소
+2. key_emotions: 반드시 3-5개의 구체적인 감정 키워드 (오직 한국어로만 작성, 예: "불안함", "당황스러움")
+3. atmosphere: 반드시 3-5개의 분위기 키워드 (오직 한국어로만 작성, 예: "어수선한", "차가운")
+4. key_elements: 반드시 3-5개의 시각적/맥락적 요소 (오직 한국어로만 작성, 예: "복잡한 화면", "뒷사람")
 `;
 
     try {
@@ -546,6 +551,7 @@ ${selectedQuestion}
 ${userAnswer}
 # TASK
 응답자의 답변을 분석하여, 기존 내러티브에 새롭게 드러난 정보를 자연스럽게 통합하세요. 과거의 실제 사건만을 반영하세요.
+새롭게 추출되는 키워드(key_emotions, atmosphere, key_elements)는 반드시 한국어로만 작성하세요.
 `;
 
     const result = await textModel.generateContent({
@@ -596,19 +602,107 @@ async function modifyImageWithInput(currentImageSrc, modificationText, updatedNa
     return `data:${imgData.mimeType};base64,${imgData.data}`;
 }
 
-// 💡 목표 지향적 단일 질문 생성 함수 (횟수 분기 + AI 자율 판단 적용)
+
+// 💡 질문 확정 및 응답자 화면 갱신 함수
+function syncQuestionToRespondent(q) {
+    if (!q) return;
+    currentSelectedQuestion = q;
+    
+    if (respondentWindow && !respondentWindow.closed) {
+        respondentWindow.postMessage({ type: 'syncQuestion', question: currentSelectedQuestion }, '*');
+    }
+    
+    const replyArea = document.getElementById("questionReplyArea");
+    if (replyArea) {
+        replyArea.classList.remove('disabled');
+        const input = document.getElementById("replyInput");
+        input.placeholder = "답변을 여기에 기록해주세요.";
+        input.focus({ preventScroll: true });
+    }
+}
+
+function notifyTypingToRespondent() {
+    if (respondentWindow && !respondentWindow.closed) {
+        respondentWindow.postMessage({ 
+            type: 'syncQuestion', 
+            question: '인터뷰 질문을 작성 중입니다...'
+        }, '*');
+    }
+    
+    // 작성 중일 때는 답변을 미리 입력하지 못하게 차단
+    const replyArea = document.getElementById("questionReplyArea");
+    if (replyArea) {
+        replyArea.classList.add('disabled');
+    }
+}
+
+// 💡 직접 입력 질문 전송 핸들러
+function sendCustomQuestion() {
+    const customRadio = document.getElementById('customQuestionRadio');
+    if (customRadio) customRadio.checked = true;
+    
+    const customInput = document.getElementById('customQuestionInput');
+    const q = customInput ? customInput.value.trim() : "";
+    
+    if (!q) return alert("직접 입력할 질문을 작성해주세요.");
+    syncQuestionToRespondent(q);
+}
+
+const sendQuestionBtn = document.getElementById('sendQuestionBtn');
+if (sendQuestionBtn) {
+    sendQuestionBtn.addEventListener('click', sendCustomQuestion);
+}
+
+const customRadio = document.getElementById('customQuestionRadio');
+if (customRadio) {
+    customRadio.addEventListener('change', (e) => {
+        if (e.target.checked) notifyTypingToRespondent();
+    });
+}
+
+const customInput = document.getElementById('customQuestionInput');
+if (customInput) {
+    customInput.addEventListener('focus', () => {
+        if (customRadio && !customRadio.checked) {
+            customRadio.checked = true;
+            notifyTypingToRespondent();
+        } else if (customRadio && customRadio.checked) {
+            notifyTypingToRespondent();
+        }
+    });
+    
+    customInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendCustomQuestion();
+        }
+    });
+    
+    customInput.addEventListener('input', () => {
+        if (customRadio) customRadio.checked = true;
+        
+        if (sendQuestionBtn) {
+            sendQuestionBtn.disabled = customInput.value.trim() === '';
+        }
+    });
+}
+
+// 💡 3개의 질문 선택지를 제안하도록 수정된 함수
 async function generateNextQuestion(narrative) {
-    const questionDisplayEl = document.getElementById('currentAiQuestionDisplay');
-    if (!questionDisplayEl) return;
-    questionDisplayEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI가 다음 질문을 고민하고 있습니다...';
+    const listEl = document.getElementById('aiQuestionsList');
+    if (!listEl) return;
+    
+    listEl.innerHTML = '<p class="placeholder"><i class="fas fa-spinner fa-spin"></i> AI가 다음 질문을 고민하고 있습니다...</p>';
+    
+    const replyArea = document.getElementById("questionReplyArea");
+    if (replyArea) replyArea.classList.add('disabled');
 
     const qaLogs = interactionLog.filter(log => log.type === 'question_answer');
-    const qaCount = qaLogs.length; // 현재까지 완료된 질의응답 횟수
+    const qaCount = qaLogs.length;
 
     let prompt = "";
 
     if (qaCount === 0) {
-        // [1] 최초 질문 (아이스 브레이킹)
         prompt = `
 # ROLE
 당신은 UX 리서치 심층면담 전문 인터뷰어입니다.
@@ -619,17 +713,14 @@ async function generateNextQuestion(narrative) {
 - 인터뷰 최종 목표: ${currentInterviewGoal}
 
 # TASK
-이제 막 인터뷰를 시작했습니다. 응답자가 편안하게 자신의 경험을 이야기할 수 있도록, **인터뷰 주제와 관련된 가장 첫 번째 개방형 질문 딱 1개**만 생성하세요.
+이제 막 인터뷰를 시작했습니다. 응답자가 편안하게 자신의 경험을 이야기할 수 있도록, **인터뷰 주제와 관련된 가장 첫 번째 개방형 질문 3가지 옵션**을 생성하세요.
 
 # GUIDELINES (CRITICAL)
-1. **절대 불필요한 미사여구를 쓰지 마세요.** (금지어: "혹시", "편하게 이야기해주시면 감사하겠습니다", "떠올려보시면", "어떠셨는지 말씀해주실 수 있나요")
-2. 인터뷰어가 소리 내어 읽기 쉽고, 응답자가 바로 이해할 수 있도록 **짧고 명확한 구어체**로 작성하세요.
-3. 예시: "대형 마트 셀프 계산대를 처음 써보셨을 때 전반적으로 어떠셨나요?" 처럼 핵심만 묻습니다.
-4. 임의로 상황을 기정사실화하여 묻지 마세요.
-5. 다른 설명 없이 오직 질문 딱 1문장만 출력하세요.
+1. **절대 불필요한 미사여구를 쓰지 마세요.** 2. 인터뷰어가 소리 내어 읽기 쉽고, 응답자가 바로 이해할 수 있도록 **짧고 명확한 구어체**로 작성하세요.
+3. 임의로 상황을 기정사실화하여 묻지 마세요.
+4. 다른 설명 없이 오직 질문 3개만 배열로 출력하세요.
 `;
     } else if (qaCount < 5) {
-        // [2] 2~5번째 질문 (무조건 꼬리물기 심층 모드)
         const previousQA = qaLogs.map((log, index) => `[${index + 1}번째 질문과 답변]\nQ: ${log.question}\nA: ${log.answer}`).join('\n\n');
         prompt = `
 # ROLE
@@ -643,17 +734,15 @@ ${currentInterviewGoal}
 ${previousQA}
 
 # TASK
-이전 질의응답 중 **가장 마지막 답변(A)**을 철저히 분석하여, 인터뷰 목표를 달성하기 위해 파고들어야 할 **'다음 꼬리 질문 딱 1개'**만 생성하세요.
+이전 질의응답 중 **가장 마지막 답변(A)**을 철저히 분석하여, 인터뷰 목표를 달성하기 위해 파고들어야 할 **다음 꼬리 질문 3가지 옵션**을 생성하세요.
 
 # GUIDELINES (CRITICAL)
-1. **미사여구를 완전히 빼고 핵심만 직접적으로 물어보세요.** (금지어: "말씀해주셨는데", "혹시", "감사합니다")
-2. 응답자가 말한 핵심 단어를 짧게 인용하고 바로 본론(이유, 감정, 상황)을 물어보세요. (예: "마음이 급해서 대충 누르셨다고 했는데, 구체적으로 어떤 화면에서 가장 막막하셨나요?")
-3. 인터뷰어가 입으로 바로 소리 내어 말하기 편한, 자연스럽고 짧은 구어체 1문장으로 작성하세요.
-4. 이전 질문을 반복하지 마세요.
-5. 오직 질문 딱 1문장만 출력하세요.
+1. **미사여구를 완전히 빼고 핵심만 직접적으로 물어보세요.**
+2. 응답자가 말한 핵심 단어를 짧게 인용하고 바로 본론(이유, 감정, 상황)을 물어보세요. 
+3. 인터뷰어가 입으로 바로 소리 내어 말하기 편한, 자연스럽고 짧은 구어체 문장으로 작성하세요.
+4. 오직 질문 3개만 배열로 출력하세요.
 `;
     } else {
-        // [3] 6번째 질문 이상 (AI 자율 판단: 추가 꼬리물기 vs 해결책 질문으로 전환)
         const previousQA = qaLogs.map((log, index) => `[${index + 1}번째 질문과 답변]\nQ: ${log.question}\nA: ${log.answer}`).join('\n\n');
         prompt = `
 # ROLE
@@ -667,45 +756,67 @@ ${currentInterviewGoal}
 ${previousQA}
 
 # TASK
-이전 질의응답을 전체적으로 분석하여, 사용자의 **핵심 페인 포인트(고충)와 이탈(포기) 원인이 충분히 파악되었는지 스스로 판단**하세요.
-
-[상황 A: 아직 원인 파악이 더 필요한 경우]
-가장 마지막 답변을 물고 늘어지는 **예리한 꼬리 질문 딱 1개**를 생성하세요. 
-
-[상황 B: 고충과 이탈 원인이 충분히 파악된 경우 (마무리 단계)]
-과거의 고충을 더 이상 반복해서 묻지 말고, **"어떤 기능이나 도움이 있었다면 포기하지 않았을지"** 등 **개선 방향 혹은 해결책**을 묻는 질문 딱 1개를 생성하세요.
+이전 질의응답을 전체적으로 분석하여, 사용자의 핵심 페인 포인트와 이탈 원인이 파악되었다면 해결책이나 개선 방향을 묻는 질문 3가지 옵션을, 아직 원인 파악이 더 필요하다면 예리한 꼬리 질문 3가지 옵션을 생성하세요.
 
 # GUIDELINES (CRITICAL)
-1. **미사여구를 완전히 빼고 핵심만 직접적으로 물어보세요.** (금지어: "말씀해주셨는데", "혹시", "감사합니다")
-2. 인터뷰어가 입으로 소리 내어 말하기 편한, 자연스럽고 짧은 구어체 1문장으로 작성하세요.
-3. 이전 질문을 절대 반복하지 마세요.
-4. 당신이 상황 A인지 B인지 판단한 이유나 부연 설명은 절대 적지 마세요. **오직 질문 딱 1문장만 출력**해야 합니다.
+1. **미사여구를 완전히 빼고 핵심만 직접적으로 물어보세요.** 2. 이전 질문을 절대 반복하지 마세요.
+3. 오직 질문 3개만 배열로 출력하세요.
 `;
     }
 
+    const schema = {
+        description: "List of 3 interview question options",
+        type: SchemaType.OBJECT,
+        properties: {
+            questions: {
+                type: SchemaType.ARRAY,
+                items: { type: SchemaType.STRING },
+                description: "3 different interview questions"
+            }
+        },
+        required: ["questions"],
+    };
+
     try {
-        const result = await textModel.generateContent(prompt);
-        const question = (await result.response).text().trim();
+        const result = await textModel.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json", responseSchema: schema },
+        });
+        
+        const responseText = await result.response.text();
+        const data = JSON.parse(responseText);
+        const questions = data.questions || [];
 
-        questionDisplayEl.textContent = question;
-        currentSelectedQuestion = question;
+        listEl.innerHTML = '';
+        questions.forEach((q, idx) => {
+            const id = `ai_q_${idx}`;
+            const div = document.createElement('div');
+            div.className = 'ai-question-item';
+            div.innerHTML = `
+                <input type="radio" name="selectedQuestion" id="${id}" value="${q}">
+                <label for="${id}">${q}</label>
+            `;
+            listEl.appendChild(div);
 
-        const replyArea = document.getElementById("questionReplyArea");
-        if (replyArea) {
-            replyArea.classList.remove('disabled');
-            const input = document.getElementById("replyInput");
-            input.placeholder = "위 질문에 대한 응답자의 답변을 입력해주세요.";
-            input.focus({ preventScroll: true });
-        }
+            // 💡 AI 질문 선택 시 즉시 응답자에게 전송
+            const radioInput = div.querySelector('input');
+            radioInput.addEventListener('click', (e) => {
+                if (e.target.checked) {
+                    syncQuestionToRespondent(e.target.value);
+                }
+            });
+        });
 
-        if (respondentWindow && !respondentWindow.closed) {
-            respondentWindow.postMessage({ type: 'syncQuestion', question: question }, '*');
-        }
+        // 커스텀 입력 초기화
+        if (customInput) customInput.value = '';
+        if (sendQuestionBtn) sendQuestionBtn.disabled = true;
+        
     } catch (error) {
         console.error("질문 생성 오류:", error);
-        questionDisplayEl.textContent = "질문을 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.";
+        listEl.innerHTML = "<p>질문을 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.</p>";
     }
 }
+
 
 if (historyToggleBtn) {
     historyToggleBtn.addEventListener("click", () => {
@@ -804,14 +915,19 @@ if (replySubmitBtn) {
             
             renderHistorySidebar(); 
 
+            // 💡 이미지 정보(cartoonSrc) 누락 버그 픽스 유지
             if (respondentWindow && !respondentWindow.closed) {
                 const tags = [...currentKeyEmotions, ...currentAtmosphere, ...currentKeyElements].map(t => `#${t}`);
+                const cartoonImgEl = document.getElementById("geminiImg");
+                const cartoonSrc = cartoonImgEl ? cartoonImgEl.src : "";
+                
                 respondentWindow.postMessage({
                     type: 'syncAll',
-                    narrative: currentNarrative,
+                    narrative: initialNarrative || currentNarrative, 
                     question: currentSelectedQuestion, 
                     parameters: tags,
-                    panoramaSrc: currentPanoramaSrc
+                    panoramaSrc: currentPanoramaSrc,
+                    cartoonSrc: cartoonSrc
                 }, '*');
             }
 
@@ -1092,6 +1208,7 @@ if (startInterviewBtn) {
         try {
             const result = await generateNarrativeWithAI();
             currentNarrative = result.narrative; 
+            initialNarrative = currentNarrative; 
             if (narrativeTextEl) narrativeTextEl.innerHTML = currentNarrative;
 
             currentPrompt = buildBasePrompt(currentNarrative);

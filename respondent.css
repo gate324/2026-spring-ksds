@@ -122,12 +122,12 @@
 }
 
 /* ==========================================
-   하단 질문창 전용 특별 디자인 (캡슐 모양 -> 네모 박스)
+   하단 질문창 전용 특별 디자인 (캡슐 모양 -> 네모 박스 변경)
 ========================================== */
 .question-glass {
     text-align: center;
-    padding: 12px 24px !important;
-    border-radius: 30px !important; /* 처음엔 알약 같은 캡슐 모양 */
+    padding: 24px 32px !important; /* 항상 확장된 패딩 적용 */
+    border-radius: 16px !important; /* 항상 둥근 사각형 적용 */
     transition: all 0.4s ease;
 }
 
@@ -135,12 +135,6 @@
     justify-content: center;
     font-size: 16px;
     color: #cbd5e1;
-}
-
-/* 마우스 올리면 캡슐이 둥근 사각형 박스로 스르륵 변하며 커짐 */
-.panorama-question-overlay:hover .question-glass {
-    border-radius: 16px !important;
-    padding: 24px 32px !important;
 }
 
 /* ==========================================
@@ -188,13 +182,6 @@
     z-index: 20;
 }
 
-/* 하단 질문 영역 넓은 범위 호버 반응 */
-.hover-target:hover .section-content {
-    max-height: 400px;
-    opacity: 1;
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
 .hover-target:hover .toggle-icon {
     transform: rotate(180deg);
 }
