@@ -298,7 +298,17 @@ async function generateNarrativeWithAI() {
 
     const prompt = `
 # ROLE
-당신은 UX 리서치 맥락에서 사용자의 과거 경험을 장면(scene) 단위 내러티브로 재구성하는 전문가입니다.
+당신은 UX 리서치 맥락에서 사용자의 과거 경험을 장면(scene) 단위 내러티브로 재구성하는 전문가입니다. 사용자의 응답을 기반으로, 한 순간의 경험을 시간적, 공간적, 감정적 맥락까지 포함한 짧지만 구체적인 이야기로 정리합니다. 사용자의 경험을 깊이 이해하고 생생한 내러티브로 표현하는 데 탁월한 능력을 가지고 있습니다.
+
+# BACKGROUND
+내러티브는 인물, 배경, 사건이 시간적 순서와 인과관계를 가지며 배열된 이야기 구조입니다. 한 장면을 효과적으로 묘사하는 내러티브는 다음 4요소를 포함할 때 이해와 몰입이 높아집니다.
+
+1) 상황 제시(orientation): 언제, 어디서, 누구와, 무엇을 하고 있었는지
+2) 사건 전개(complicating action): 그때 무슨 일이 일어났고, 사용자가 어떤 행동을 했는지
+3) 평가/감정(evaluation): 그 순간 어떤 감정을 가지고 생각을 했고, 왜 중요한지
+4) 결과/여운(result/coda): 그 일의 결과와, 지금 돌아봤을 때 남아 있는 느낌이 무엇인지
+
+UX 문맥에서는 이 4요소를 "상황(when/where/who/what) – 행동 – 감정/생각 – 결과/의미"로 정리할 수 있습니다.
 
 # CONTEXT
 ## 인터뷰 주제
@@ -314,7 +324,10 @@ ${currentInterviewGoal ? `## 인터뷰 목표\n${currentInterviewGoal}` : ""}
 사용자가 제공한 경험 데이터를 바탕으로, 당시 상황을 생생하게 재현하는 1인칭 시점의 내러티브를 작성하세요. 구체적이고 감각적인 묘사가 필요합니다. 목표를 염두에 두고 첫 장면을 상상하여 작성하세요.
 
 # OUTPUT DIRECTIVES
-1. narrative (string): 5-8문장으로 구성된 자연스러운 스토리 (1인칭 시점)
+1. narrative (string): 5-8문장으로 구성된 자연스러운 스토리
+   - 1인칭 시점(“나는 …했다”, “나는 …라고 느꼈다”)으로 작성합니다.
+   - 일기처럼 자연스럽지만, 연구자가 읽기에도 명료한 문장을 사용합니다. 과도한 수사나 비유는 지양하고, 구체적인 상황 묘사에 집중하세요.
+   - 사용자가 말하지 않은 세부(조명, 소리, 주변 사람 수 등)는 “한국의 일상적 상황에서 자연스러운 수준”에서만 보수적으로 보완합니다.
 2. key_emotions: 반드시 3-5개의 구체적인 감정 키워드 (오직 한국어로만 작성, 예: "불안함", "당황스러움")
 3. atmosphere: 반드시 3-5개의 분위기 키워드 (오직 한국어로만 작성, 예: "어수선한", "차가운")
 4. key_elements: 반드시 3-5개의 시각적/맥락적 요소 (오직 한국어로만 작성, 예: "복잡한 화면", "뒷사람")
@@ -500,15 +513,51 @@ if (geminiImg) {
 async function generatePanoramaImage(modificationContext = '') {
     if (!currentNarrative) throw new Error('현재 내러티브가 없습니다.');
     
-    const panoramaPrompt = `# ROLE
-You are an expert photographer specializing in 360-degree equirectangular panoramic photography.
+    const panoramaPrompt = `You are an expert photographer specializing in 360-degree equirectangular panoramic photography.
+
+# TASK
+Generate a photorealistic 360-degree equirectangular panorama of the environment described below. This must be in the exact equirectangular projection format (2:1 aspect ratio) suitable for 360-degree immersive viewing.
+
 # SCENE CONTEXT
-Situation (Narrative): ${currentNarrative}
+Situation: ${currentNarrative}
 ${modificationContext ? `User's Additional Request: ${modificationContext}` : ''}
+
 # CRITICAL FORMAT REQUIREMENTS
-1. Projection: Equirectangular
-2. Aspect Ratio: 2:1
-3. NO CHARACTERS OR PEOPLE. Only environment.`;
+1. **Projection**: MUST be equirectangular (also called spherical or lat-long projection)
+2. **Aspect Ratio**: MUST be exactly 2:1 (width is twice the height)
+3. **Coverage**: Full 360x180 degree spherical coverage
+4. **Horizon**: Must be at the vertical center of the image
+5. **Edge Continuity (CRITICAL)**:
+   - The leftmost and rightmost pixels MUST connect seamlessly to form a continuous 360-degree loop
+   - Architectural elements, walls, floors, and ceilings at the edges must align perfectly
+   - Lighting and color temperature must match at both edges
+   - No visible seam or discontinuity when edges wrap around
+
+# VISUAL STYLE
+- Style: Photorealistic street photography
+- Quality: High-resolution, sharp, clear details
+- Perspective: Eye-level view (approximately 1.6m height)
+- Lighting: Natural, realistic lighting matching the scene context
+- Atmosphere: Authentic, immersive environmental detail
+
+# CONTENT REQUIREMENTS
+- **NO CHARACTERS OR PEOPLE**: Show only the environment, architecture, and objects
+- Include: Buildings, furniture, fixtures, ambient elements, spatial context
+- Exclude: Any human figures, characters, or representations of people
+- Details: Realistic textures, materials, depth, and spatial relationships
+
+# EDGE CONNECTION GUIDELINES
+- Imagine the camera is at the center of a sphere, capturing everything around it
+- The leftmost edge and rightmost edge are the same view direction, just wrapped
+- Ensure continuous patterns: if a wall starts at the right edge, it should continue at the left edge
+- Maintain consistent perspective distortion across the entire 360-degree view
+- Test mentally: if you stitched left and right edges together, they should align perfectly
+
+# REFERENCE
+The output should look similar to Google Street View panoramas - a complete 360-degree environmental capture that wraps seamlessly without any visible seam when viewed in a panoramic viewer.
+
+# TONE
+Photorealistic, immersive, and architecturally accurate. Focus on the spatial experience and environmental ambiance. Prioritize seamless edge continuity for proper 360-degree viewing.`;
     
     const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: panoramaPrompt }] }],
