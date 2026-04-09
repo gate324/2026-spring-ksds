@@ -1042,6 +1042,9 @@ if (remixSubmitBtn) {
                     variationNumber: currentVariationNumber,
                     request: modificationCommand,
                 });
+
+                // 💡 [수정된 부분] 이미지 수정이 끝난 후 응답자 화면에 동기화 함수 호출
+                syncToRespondent(currentPanoramaImgSrc);
             }
             remixInput.value = '';
         } catch (error) {
